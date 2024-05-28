@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = NMF_Merge
+CurrentModule = NMFMerge
 ```
 
-# NMF_Merge
+# NMFMerge
 
-Documentation for [NMF_Merge](https://github.com/HolyLab/NMF_Merge.jl).
+Documentation for [NMFMerge](https://github.com/HolyLab/NMFMerge.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [NMF_Merge]
+Modules = [NMFMerge]
 ```

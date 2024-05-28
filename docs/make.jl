@@ -1,14 +1,14 @@
-using NMF_Merge
+using NMFMerge
 using Documenter
 
-DocMeta.setdocmeta!(NMF_Merge, :DocTestSetup, :(using NMF_Merge); recursive=true)
+DocMeta.setdocmeta!(NMFMerge, :DocTestSetup, :(using NMFMerge); recursive=true)
 
 makedocs(;
-    modules=[NMF_Merge],
+    modules=[NMFMerge],
     authors="youdongguo <1010705897@qq.com> and contributors",
-    sitename="NMF_Merge.jl",
+    sitename="NMFMerge.jl",
     format=Documenter.HTML(;
-        canonical="https://HolyLab.github.io/NMF_Merge.jl",
+        canonical="https://HolyLab.github.io/NMFMerge.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/HolyLab/NMF_Merge.jl",
+    repo="github.com/HolyLab/NMFMerge.jl",
     devbranch="main",
 )

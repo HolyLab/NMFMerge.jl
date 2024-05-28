@@ -1,4 +1,4 @@
-module NMF_Merge
+module NMFMerge
 
 using LinearAlgebra, DataStructures
 

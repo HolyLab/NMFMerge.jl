@@ -73,6 +73,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using NMF_Merge
-          DocMeta.setdocmeta!(NMF_Merge, :DocTestSetup, :(using NMF_Merge); recursive=true)
-          doctest(NMF_Merge)
+          using NMFMerge
+          DocMeta.setdocmeta!(NMFMerge, :DocTestSetup, :(using NMFMerge); recursive=true)
+          doctest(NMFMerge)
