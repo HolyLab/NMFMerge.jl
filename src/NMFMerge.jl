@@ -4,7 +4,6 @@ using LinearAlgebra, DataStructures
 
 export colnormalize,
        colmerge2to1pq,
-       mergecol2to1!,
        mergecolumns
 
 function colnormalize(W, H, p::Int=2)

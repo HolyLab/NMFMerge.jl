@@ -34,6 +34,7 @@ end
 
     W2 = [W1n[:, j] for j in axes(W1n, 2)];
     H2 = [H1n[i, :] for i in axes(H1n, 1)];
+
     Q1, Q2, _, _, _, _ =build_Qs(W2, H2, 1, 2)
     @test Q1 == Q1'
     @test Q2 == Q2
@@ -51,8 +52,13 @@ end
     @test abs(λ_min - minimum(F.values))<=1e-12
 
     @test abs(u[1]/u[2] - w[1]/w[2])<1e-3*(u[1]/u[2] + w[1]/w[2])/2
-    
+    # @show u
+    # @show w
+    # @show u[1]/u[2]
+    # @show w[1]/w[2]
+
     w = [u[1], u[2]]
+    @test norm(w) ≈ 1
     @test norm(Q1*w - maximum(F.values)*Q2*w) < 1e-12
 
     W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
