@@ -12,7 +12,7 @@ All of the examples below assume you've loaded the package with `using FlyThroug
 
 ## Functions
 
-**colmerge2to1pq**colmerge2to1pq(W, H, n)
+**colmerge2to1pq**(W, H, n)
 
 This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``) from original number of components to ``n`` components (``n``columns and rows left in ``W`` and ``H`` respectively) 
 
