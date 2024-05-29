@@ -1,18 +1,17 @@
 using NMFMerge, NMF, LinearAlgebra, DataStructures, ForwardDiff
 using Test
 
-function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer; drop_crossterm::Bool=false)
-    mS, mT = NMFMerge.sdot(S, id1, id2), NMFMerge.tdot(T, id1, id2)
-    c = mS[1,2]
-    τ1τ1 = mT[1,1]
-    τ1τ2 = drop_crossterm ? zero(τ1τ1) : mT[1,2]
-    τ2τ2 = mT[2,2]
+function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
+    c = S[id1]'*S[id2]
+    τ1τ1 = T[id1]'*T[id1]
+    τ1τ2 = T[id1]'*T[id2]
+    τ2τ2 = T[id2]'*T[id2]
     q1 = τ1τ1 + 2*c*τ1τ2 + c^2*τ2τ2
     q12 = c*τ1τ1 + (1+c^2)*τ1τ2 + c*τ2τ2
     q2 = c^2*τ1τ1 + 2*c*τ1τ2 + τ2τ2
     Q1 = [q1 q12; q12 q2]
-    s1s1 = mS[1,1]
-    s2s2 = mS[2,2]
+    s1s1 = 1
+    s2s2 = 1
     Q2 = [s1s1 c; c s2s2]
     return Q1, Q2, c, τ1τ1, τ1τ2, τ2τ2
 end
@@ -59,7 +58,7 @@ end
 
     W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
-    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-10
+    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-12
 
 end
 
@@ -82,7 +81,7 @@ end
     Wn, Hn = colnormalize(W, H)
     @test sum(abs2, W*H - Wn*Hn) < 1e-16
 
-    Wm, Hm, _, _, mergids = colmerge2to1pq(copy(Wn), copy(Hn), 2)
+    Wm, Hm, mergids = colmerge2to1pq(copy(Wn), copy(Hn), 2)
     Wn1 = [Wn[:, j] for j in axes(Wn, 2)];
     Hn1 = [Hn[i, :] for i in axes(Hn, 1)];
     Ids = [(1,2), (1,3), (2,3)]
