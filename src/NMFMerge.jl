@@ -6,20 +6,20 @@ export colnormalize,
        colmerge2to1pq,
        mergecolumns
 
-function colnormalize(W, H, p::Int=2)
-    W_vec = [W[:,j] for j in axes(W, 2)]
-    H_vec = [H[i, :] for i in axes(H, 1)]
-    nonzeroindex = findall(x -> x != 0, norm.(W_vec, 2))
-    W_vec_nonzero, H_vec_nonzero= W_vec[nonzeroindex], H_vec[nonzeroindex]
-    W_vec2 = normalize.(W_vec_nonzero, p)
-    H_vec2 = H_vec_nonzero.*norm.(W_vec_nonzero, p)
-    W_in, H_in = hcat(W_vec2...), hcat(H_vec2...)'
-    @assert abs(norm(W_in[:,1], p)-1) <= 1e-12
-    return W_in, H_in
+function colnormalize!(W, H, p::Integer=2)
+    for (j, w) in pairs(eachcol(W))
+        normw = norm(w, p)
+        if !iszero(normw)
+            W[:, j] = w/normw
+            H[j, :] = H[j, :]*normw
+        end
+    end
+    return W, H
 end
+colnormalize(W, H, p::Integer=2) = colnormalize!(copy(W), copy(H), p)
 
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
-    mrgseq = Tuple{Integer, Integer}[]
+    mrgseq = Tuple{Int, Int}[]
     S = [S[:, j] for j in axes(S, 2)];
     T = [T[i, :] for i in axes(T, 1)];
     for s in S
@@ -32,8 +32,8 @@ function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     m = Nt
     while m > n
         id0, id1 = dequeue!(pq)
-        while isempty(S[id0])||isempty(S[id1])
-            id0, id1 = dequeue!(pq)
+        if isempty(S[id0])||isempty(S[id1])
+            continue
         end
         push!(mrgseq, (id0, id1))
         S, T, id01, _ = mergecol2to1!(S, T, id0, id1);
@@ -41,11 +41,11 @@ function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
         m -= 1
     end
     Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
-    return Smtx, Matrix(Tmtx), S, T, mrgseq
+    return Smtx, Matrix(Tmtx), mrgseq
 end
 
 function initialize_pq_2to1(S::AbstractVector, T::AbstractVector)
-    err_pq = PriorityQueue{Tuple{Integer, Integer},Float64}()
+    err_pq = PriorityQueue{Tuple{Int, Int},Float64}()
     for id0 in length(S):-1:2
         err_pq = pqupdate2to1!(err_pq, S, T, id0, 1:id0-1)
     end
@@ -70,22 +70,19 @@ function solve_remix(S, T, id1, id2)
     if h2h2 == 0
         return c, zero(c), (one(c),zero(c))
     end
-    λ_max = τ/2+sqrt(τ^2/4-δ)
-    λ_min = τ/2-sqrt(τ^2/4-δ)
-    ξ = (λ_max-h2h2-c*h1h2)/(h1h2+c*h2h2)
-    @assert ξ >= 0
+    b = sqrt(τ^2/4-δ)
+    λ_max = τ/2+b
+    λ_min = δ/λ_max
+    ξ = (h1h1-h2h2+4b)/((h1h2+c*h2h2)*2)
     u = (ξ, 1)./sqrt(1+ξ^2)
-    @assert norm(u) ≈ 1
-    p = λ_min
-    return c, p, u
+    return c, λ_min, u
 end
 
 function build_tr_det(W::AbstractVector, H::AbstractVector, id1::Integer, id2::Integer)
-    mW, mH = sdot(W, id1, id2), tdot(H, id1, id2)
-    c = mW[1,2]
-    h1h1 = mH[1,1]
-    h1h2 = mH[1,2]
-    h2h2 = mH[2,2]
+    c = W[id1]'*W[id2]
+    h1h1 = H[id1]'*H[id1]
+    h1h2 = H[id1]'*H[id2]
+    h2h2 = H[id2]'*H[id2]
     τ = h1h1+2c*h1h2+h2h2
     δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
     return τ, δ, c, h1h1, h1h2, h2h2
@@ -106,14 +103,12 @@ function mergepair(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Inte
     return S12, T12, loss
 end
 
-function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2::Integer, c::AbstractFloat, w::Tuple{Tw, Tw}; catT::Bool=false) where {Tw, TS}
-    # Note that catT is the analog of drop_crossterm: both are used
-    # when the time-vectors have no overlap
+function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2::Integer, c::AbstractFloat, w::Tuple{Tw, Tw}) where {Tw, TS}
     S12 = zeros(eltype(TS), length(S[id1]))
     S12 += w[1]*S[id1]
     S12 += w[2]*S[id2]
     T1, T2 = (w[1]+w[2]*c)*T[id1], (w[1]*c+w[2])*T[id2]
-    T12 = catT ? vcat(T1, T2) : T1+T2
+    T12 = T1+T2
     return S12, T12
 end
 
@@ -133,34 +128,6 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
     end
     Smtx, Tmtx = hcat(filter(x -> x != [], S)...), hcat(filter(x -> x != [], T)...)'
     return Smtx, Matrix(Tmtx), STstage, Err
-end
-
-function sdot(S::AbstractVector, id::Vararg{Int, N}) where N
-    mS = zeros(length(id), length(id))
-    for (j, id_j) in enumerate(id)
-        for (i, id_i) in enumerate(id)
-            if i >= j
-                mS[i, j] = min(1.0, S[id_i]'*S[id_j])
-            else
-                mS[i, j] = mS[j, i]
-            end
-        end
-    end
-    return mS
-end
-
-function tdot(T::AbstractVector, id::Vararg{Int, N}) where N
-    mT = zeros(length(id), length(id))
-    for (j, id_j) in enumerate(id)
-        for (i, id_i) in enumerate(id)
-            if i >= j
-                mT[i, j] = T[id_i]'*T[id_j]
-            else
-                mT[i, j] = mT[j, i]
-            end
-        end
-    end
-    return mT
 end
 
 end
