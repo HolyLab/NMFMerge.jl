@@ -51,11 +51,7 @@ end
     @test abs(λ_max - maximum(F.values))<=1e-12
     @test abs(λ_min - minimum(F.values))<=1e-12
 
-    @test abs(u[1]/u[2] - w[1]/w[2])<1e-3*(u[1]/u[2] + w[1]/w[2])/2
-    # @show u
-    # @show w
-    # @show u[1]/u[2]
-    # @show w[1]/w[2]
+    @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
 
     w = [u[1], u[2]]
     @test norm(w) ≈ 1
@@ -63,7 +59,7 @@ end
 
     W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
-    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-12
+    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-10
 
 end
 

@@ -73,7 +73,9 @@ function solve_remix(S, T, id1, id2)
     λ_max = τ/2+sqrt(τ^2/4-δ)
     λ_min = τ/2-sqrt(τ^2/4-δ)
     ξ = (λ_max-h2h2-c*h1h2)/(h1h2+c*h2h2)
+    @assert ξ >= 0
     u = (ξ, 1)./sqrt(1+ξ^2)
+    @assert norm(u) ≈ 1
     p = λ_min
     return c, p, u
 end
