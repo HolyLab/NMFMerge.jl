@@ -5,7 +5,7 @@ using LinearAlgebra, DataStructures
 export colnormalize,
        colmerge2to1pq,
        mergecolumns
-
+       
 function colnormalize!(W, H, p::Integer=2)
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
@@ -16,7 +16,7 @@ function colnormalize!(W, H, p::Integer=2)
     end
     return W, H
 end
-colnormalize(W, H, p::Integer=2) = colnormalize!(copy(W), copy(H), p)
+colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
@@ -131,3 +131,7 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
 end
 
 end
+
+
+
+

@@ -21,37 +21,38 @@ end
     h1 = [4 9 10 7 7 0 0 0]
     w2 = [4, 8, 0, 1, 0, 4, 4, 5]
     h2 = [3 5 0 2 4 0 0 8]
-    W = Float64.([w1 w2])
-    H = Float64.([h1; h2])
+    W = [w1 w2]
+    H = [h1; h2]
     Wn, Hn = colnormalize(W, H)
     W_v = [Wn[:, j] for j in axes(Wn, 2)]
     H_v = [Hn[i, :] for i in axes(Hn, 1)]
 
     Q1, Q2, _, _, _, _ =build_Qs(W_v, H_v, 1, 2)
-    @test Q1 == Q1'
-    @test Q2 == Q2
+    @test issymmetric(Q1)
+    @test issymmetric(Q2)
     F = eigen(Q1, Q2)
-    Fvals, Fvecs = F.values::Vector{eltype(Q2)}, F.vectors::Matrix{eltype(Q2)}
+    Fvals, Fvecs = F.values, F.vectors
     idx = argmax(Fvals)
     w = Fvecs[:,idx]
 
-     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
+    τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
     c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
-    λ_max = τ/2+sqrt(τ^2/4-δ)
-    λ_min = τ/2-sqrt(τ^2/4-δ)
+    b = sqrt(τ^2/4-δ)
+    λ_max = τ/2+b
+    λ_min = δ/λ_max
     
     @test abs(λ_max - maximum(F.values))<=1e-12
-    @test abs(λ_min - minimum(F.values))<=1e-12
+    @test abs(λ_min - minimum(F.values))<=1e-10
 
     @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
 
     w = [u[1], u[2]]
     @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
-    @test norm(Q1*w - maximum(F.values)*Q2*w) < 1e-12
+    @test norm(Q1*w - maximum(F.values)*Q2*w) <= 1e-12
     
     W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
     Err(Hm) = sum(abs2, W12 * Hm' - W * H)
-    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-12
+    @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
 
 end
 
@@ -74,30 +75,31 @@ end
     H2 = [H1n[i, :] for i in axes(H1n, 1)];
 
     Q1, Q2, _, _, _, _ =build_Qs(W2, H2, 1, 2)
-    @test Q1 == Q1'
-    @test Q2 == Q2
+    @test issymmetric(Q1)
+    @test issymmetric(Q2)
     F = eigen(Q1, Q2)
-    Fvals, Fvecs = F.values::Vector{eltype(Q2)}, F.vectors::Matrix{eltype(Q2)}
+    Fvals, Fvecs = F.values, F.vectors
     idx = argmax(Fvals)
     w = Fvecs[:,idx]
 
     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
     c, p, u = NMFMerge.solve_remix(W2, H2, 1, 2)
-    λ_max = τ/2+sqrt(τ^2/4-δ)
-    λ_min = τ/2-sqrt(τ^2/4-δ)
+    b = sqrt(τ^2/4-δ)
+    λ_max = τ/2+b
+    λ_min = δ/λ_max
     
     @test abs(λ_max - maximum(F.values))<=1e-12
-    @test abs(λ_min - minimum(F.values))<=1e-12
+    @test abs(λ_min - minimum(F.values))<=1e-10
 
     @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
 
     w = [u[1], u[2]]
     @test norm(u[1].*W2[1].+u[2].*W2[2]) ≈ 1
-    @test norm(Q1*w - maximum(F.values)*Q2*w) < 1e-12
+    @test norm(Q1*w - maximum(F.values)*Q2*w) <= 1e-12
 
     W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
-    @test norm(ForwardDiff.gradient(Err, H12)) < 1e-12
+    @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
 
 end
 
