@@ -5,7 +5,16 @@ using LinearAlgebra, DataStructures
 export colnormalize,
        colmerge2to1pq,
        mergecolumns
+    
+"""
+    colnormalize(W, H, p)
 
+This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
+
+To use this function:
+Wnormalized, Hnormalized = colnormalize(W, H, p)
+"""
+       
 function colnormalize!(W, H, p::Integer=2)
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
@@ -16,16 +25,7 @@ function colnormalize!(W, H, p::Integer=2)
     end
     return W, H
 end
-
-"""
-    colnormalize(W, H, p)
-
-This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
-
-To use this function:
-Wnormalized, Hnormalized = colnormalize(W, H, p)
-"""
-colnormalize(W, H, p::Integer=2) = colnormalize!(copy(W), copy(H), p)
+colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
     colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
@@ -90,8 +90,8 @@ function solve_remix(S, T, id1, id2)
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
-    ξ = (h1h1-h2h2+4b)/((h1h2+c*h2h2)*2)
-    u = (ξ, 1)./sqrt(1+ξ^2)
+    ξ = (h1h1-h2h2+2b)/((h1h2+c*h2h2)*2)
+    u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
     return c, λ_min, u
 end
 
@@ -128,7 +128,7 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
     T12 = T1+T2
     return S12, T12
 end
-
+  
 """
     mergecolumns(W, H, mergeseq; tracemerge=false)
 
