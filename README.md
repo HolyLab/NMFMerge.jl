@@ -40,7 +40,6 @@ Considering the ground truth
 ```math
 \begin{align} 
         \begin{aligned}
-        \label{simu_matrix}
             \mathbf{W} = \begin{pmatrix}
                 6 & 0 & 4 & 9 \\
                 0 & 4 & 8 & 3 \\
