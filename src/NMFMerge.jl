@@ -1,29 +1,11 @@
 module NMFMerge
 
-using LinearAlgebra, DataStructures, NMF, GsvdInitialization
+using LinearAlgebra, DataStructures
 
-export nmfmerge,
-       colnormalize,
+export colnormalize,
        colmerge2to1pq,
        mergecolumns
-
-function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
-    f = svd(X)
-    if W0 === nothing && H0 === nothing
-        W0, H0 = NMF.nndsvd(X, ncomponents[2], initdata=f)
-    end
-    result_initial = nnmf(X, ncomponents[2]; kwargs..., tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
-    W_initial, H_initial = result_initial.W, result_initial.H
-    kadd = ncomponents[1] - ncomponents[2]
-    W_over_init, H_over_init = overnmfinit(X, copy(W_initial), copy(H_initial), kadd, initdata=f)
-    result_over = nnmf(X, ncomponents[1]; kwargs..., tol=tol_intermediate, W0=copy(W_over_init), H0=copy(H_over_init))
-    W_over, H_over = result_over.W, result_over.H
-    W_over_normed, H_over_normed = colnormalize(W_over, H_over)
-    Wmerge, Hmerge, _ = colmerge2to1pq(W_over_normed, H_over_normed, ncomponents[2])
-    result_renmf = nnmf(X, ncomponents[2]; kwargs..., init=:custom, tol=tol_final, W0=copy(Wmerge), H0=copy(Hmerge))
-    return result_renmf
-end
-
+       
 function colnormalize!(W, H, p::Integer=2)
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
@@ -34,7 +16,7 @@ function colnormalize!(W, H, p::Integer=2)
     end
     return W, H
 end
-colnormalize(W, H, p::Integer=2) = colnormalize!(copy(W), copy(H), p)
+colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
@@ -91,8 +73,8 @@ function solve_remix(S, T, id1, id2)
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
-    ξ = (h1h1-h2h2+4b)/((h1h2+c*h2h2)*2)
-    u = (ξ, 1)./sqrt(1+ξ^2)
+    ξ = (h1h1-h2h2+2b)/((h1h2+c*h2h2)*2)
+    u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
     return c, λ_min, u
 end
 
