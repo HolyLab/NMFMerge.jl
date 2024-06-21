@@ -131,7 +131,3 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
 end
 
 end
-
-
-
-
