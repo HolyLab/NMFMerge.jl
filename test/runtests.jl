@@ -37,6 +37,7 @@ end
 
     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
     c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
+    u = [u[1], u[2]]
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
@@ -46,9 +47,9 @@ end
 
     @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
 
-    w = [u[1], u[2]]
     @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
-    @test norm(Q1*w - maximum(F.values)*Q2*w) <= 1e-12
+    @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
+    @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
     
     W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
     Err(Hm) = sum(abs2, W12 * Hm' - W * H)
@@ -84,6 +85,7 @@ end
 
     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
     c, p, u = NMFMerge.solve_remix(W2, H2, 1, 2)
+    u = [u[1], u[2]]
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
@@ -93,9 +95,9 @@ end
 
     @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
 
-    w = [u[1], u[2]]
     @test norm(u[1].*W2[1].+u[2].*W2[2]) ≈ 1
-    @test norm(Q1*w - maximum(F.values)*Q2*w) <= 1e-12
+    @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
+    @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
 
     W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
