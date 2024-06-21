@@ -5,6 +5,15 @@ using LinearAlgebra, DataStructures
 export colnormalize,
        colmerge2to1pq,
        mergecolumns
+    
+"""
+    colnormalize(W, H, p)
+
+This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
+
+To use this function:
+Wnormalized, Hnormalized = colnormalize(W, H, p)
+"""
        
 function colnormalize!(W, H, p::Integer=2)
     for (j, w) in pairs(eachcol(W))
@@ -18,6 +27,14 @@ function colnormalize!(W, H, p::Integer=2)
 end
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
+"""
+    colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
+
+This function merges components in W and H (columns in W and rows in H) from original number of components to n components (n columns and rows left in W and H respectively).
+
+To use this function:
+Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n), where Wmerge and Hmerge are the merged results with n components. mergeseq is the sequence of merge pair ids (id1, id2), which is the components id of single merge.
+"""
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
     S = [S[:, j] for j in axes(S, 2)];
@@ -111,7 +128,15 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
     T12 = T1+T2
     return S12, T12
 end
+  
+"""
+    mergecolumns(W, H, mergeseq; tracemerge=false)
 
+This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``) according to the sequence of merge pair ids ``mergeseq``.
+
+To use this function:
+Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge), where ``Wmerge`` and ``Hmerge`` are the merged results. ``WHstage::Vector{Tuple{Matrix, Matrix}}`` includes the results of each merge stage. ``WHstage=[]`` if ``tracemerge=false``. ``Err::Vector`` includes merge penalty of each merge stage.
+"""
 function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArray; tracemerge::Bool = false)
     Err = Float64[]
     S = [W[:, j] for j in axes(W, 2)]
