@@ -83,6 +83,7 @@ The comparison between standard NMF(HALS) and Merge:
 ![Sample Figure](images/simulation.png)
 
 Consistent with the conclusion from the comparision of ralative fitting error, the figure suggests that the results of NMFMerge(Brown) fit the ground truth(Green) better than standard NMF(Magenta).(At 44 points out of 64 points, NMFMerge results are closer to the ground truth)
+
 ---------------------------
 
 ## Functions
