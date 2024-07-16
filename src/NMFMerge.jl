@@ -34,13 +34,16 @@ Wnormalized, Hnormalized = colnormalize(W, H, p)
 """
        
 function colnormalize!(W, H, p::Integer=2)
+    nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
         if !iszero(normw)
             W[:, j] = w/normw
             H[j, :] = H[j, :]*normw
+            push!(nonzerocolids, j)
         end
     end
+    W, H = W[:, nonzerocolids], H[nonzerocolids, :]
     return W, H
 end
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
@@ -100,10 +103,10 @@ end
 function solve_remix(S, T, id1, id2)
     τ, δ, c, h1h1, h1h2, h2h2 = build_tr_det(S, T, id1, id2)
     if h1h1 == 0
-        return c, zero(c), (zero(c),one(c))
+        return c, zero(c), (zero(c), one(c))
     end
     if h2h2 == 0
-        return c, zero(c), (one(c),zero(c))
+        return c, zero(c), (one(c), zero(c))
     end
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b

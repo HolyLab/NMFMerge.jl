@@ -5,11 +5,18 @@
 [![Build Status](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/HolyLab/NMFMerge.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/HolyLab/NMFMerge.jl)
 
-This package includes the code of the paper 'An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization`.
-It is used for merging components in non-negative matrix factorization.
+This package includes the code of the paper 'An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization`. It is used to project Non-negative matrix factorization(NMF) solutions from high-dimensional space to lower dimensional space by optimally merging NMF components in higher dimensional space.
+
+This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.
 
 Let's start with a simple demo:
 Prerequisite: NMF.jl, GsvdInitialization
+
+Install the package
+```julia
+julia>] add NMFMerge;
+```
+
 Considering the ground truth
 
 ```math
@@ -39,6 +46,7 @@ Considering the ground truth
     \end{align}
 ```
 ```julia
+using NMF, GsvdInitialization
 using NMFMerge
 ```
 
@@ -69,9 +77,12 @@ julia> result_renmf = nmfmerge(float(X), 5=>4; alg = :cd, maxiter = max_iter);
 julia> result_renmf.objvalue/sum(abs2, X);
 0.00010318497977267333
 ```
+The relative fitting error between NMF solution and ground truth of NMFMerge is smaller than that of standard NMF. Thus, NMFMerge help NMF converge to better local minimum.
+
 The comparison between standard NMF(HALS) and Merge:
 ![Sample Figure](images/simulation.png)
 
+Consistent with the conclusion from the comparision of ralative fitting error, the figure suggests that the results of NMFMerge(Brown) fit the ground truth(Green) better than standard NMF(Magenta).(At 44 points out of 64 points, NMFMerge results are closer to the ground truth)
 ---------------------------
 
 ## Functions
