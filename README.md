@@ -88,7 +88,30 @@ Consistent with the conclusion from the comparision of ralative fitting error, t
 
 ## Functions
 
-Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenent, **colmerge2to1pq** function can merge ``r`` components to ``n``components. The details of this function is:
+**nmfmerge**(X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+This function performs "NMF-Merge" on 2D data matrix ``X``.
+
+Arguments:
+
+``ncomponents::Pair{Int,Int}``: in the form of ``n1 => n2``, merging from ``n1`` components to ``n2``components, where ``n1`` is the number of components for overcomplete NMF, and ``n2`` is the number of components for initial and final NMF.
+
+``ncomponents`` also supports integer, which denotes the number of components for initial and final NMF. In this case, ``nmfmerge`` merges from ``max(1, round(Int, 0.2*ncomponents))`` components to ``ncomponents``.
+
+Keyword arguments:
+
+``tol_final``： The tolerence of final NMF, default:``10^{-4}``
+
+``tol_intermediate``: The tolerence of initial and overcomplete NMF, default: $\sqrt{tol\_final}$
+
+``W0``: initialization of initial NMF, default: ``nothing``
+
+``H0``: initialization of initial NMF, default: ``nothing``
+
+If one of ``W0`` and ``H0`` is ``nothing``, the function perform NNDSVD as initialization of initial NMF.
+
+Other keywords arguments refer to ``nnmf`` function in NMF.jl.
+
+Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenents, **colmerge2to1pq** function can merge ``r`` components to ``n``components. The details of this function is:
 
 **colmerge2to1pq**(W, H, n)
 
@@ -107,10 +130,13 @@ To use this function:
 `Wnormalized, Hnormalized = colnormalize(W, H, p)`
 
 If you already have a merge sequence and want to merge from ``size(W, 2)`` components to ``n`` components, you can use the function:
+
 **mergecolumns**(W, H, mergeseq; tracemerge)
+
 keyword argurment ``tracemerge``: save ``Wmerge`` and ``Hmerge`` at each merge stage if ``tracemerge=true``. default ``tracemerge=false``.
 
 To use this function:
+
 `Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)`, where ``Wmerge`` and ``Hmerge`` are the merged results. ``WHstage::Vector{Tuple{Matrix, Matrix}}`` includes the results of each merge stage. ``WHstage=[]`` if ``tracemerge=false``. ``Err::Vector`` includes merge penalty of each merge stage.
 
 ## Citation
