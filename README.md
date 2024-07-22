@@ -128,7 +128,8 @@ To use this function:
 Before merging components, the columns in ``W`` are required to be normalized to 1. The normalization can be realized by **colnormalize** function or any other method you like.
 
 
-**colnormalize**(W, H, p)
+**colnormalize**(W, H, p=2)
+
 
 This function normalize ``||W[:, i]||_p = 1`` for ``i in 1:size(W, 2)``. Our manuscript uses ``p=2`` throughout.
 
