@@ -130,7 +130,8 @@ Before merging components, the columns in ``W`` are required to be normalized to
 
 **colnormalize**(W, H, p)
 
-This function normalize ``||W[:, i]||_p = 1`` for ``i in 1:size(W, 2)``. For this paper ``p=2``
+This function normalize ``||W[:, i]||_p = 1`` for ``i in 1:size(W, 2)``. Our manuscript uses ``p=2`` throughout.
+
 
 To use this function:
 `Wnormalized, Hnormalized = colnormalize(W, H, p)`
