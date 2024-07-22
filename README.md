@@ -97,7 +97,8 @@ Arguments:
 
 ``ncomponents::Pair{Int,Int}``: in the form of ``n1 => n2``, merging from ``n1`` components to ``n2``components, where ``n1`` is the number of components for overcomplete NMF, and ``n2`` is the number of components for initial and final NMF.
 
-``ncomponents`` also supports integer, which denotes the number of components for initial and final NMF. In this case, ``nmfmerge`` merges from ``max(1, round(Int, 0.2*ncomponents))`` components to ``ncomponents``.
+Alternatively, ``ncomponents`` can be an integer denoting the final number of components. In this case, ``nmfmerge`` defaults to an approximate 20% component excess before merging.
+
 
 Keyword arguments:
 
