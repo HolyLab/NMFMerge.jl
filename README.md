@@ -66,7 +66,8 @@ Running NMF (HALS algorithm) on $\mathbf{X}$ with NNDSVD initialization
 
 ```julia
 julia> f = svd(X);
-julia> result_hals = nnmf(float(X), 4; init=:nndsvd, alg=:cd, initdata=f, maxiter = max_iter, tol = 1e-4);
+julia> result_hals = nnmf(float(X), 4; init=:nndsvd, alg=:cd, initdata=f, maxiter = 10^12, tol = 1e-4);
+
 julia> result_hals.objvalue/sum(abs2, X)
 0.00019519131697246967
 ```
