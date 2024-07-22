@@ -109,7 +109,8 @@ Keyword arguments:
 
 ``H0``: initialization of initial NMF, default: ``nothing``
 
-If one of ``W0`` and ``H0`` is ``nothing``, the function perform NNDSVD as initialization of initial NMF.
+If one of ``W0`` and ``H0`` is ``nothing``, NNDSVD is used for initialization.
+
 
 Other keywords arguments refer to ``nnmf`` function in NMF.jl.
 
