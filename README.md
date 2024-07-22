@@ -125,7 +125,8 @@ This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in
 To use this function:
 `Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merge pair ids ``(id1, id2)``, which is the components id of single merge.
 
-Before merging components, the columns in ``W`` are required to be normalized to 1. The normalization can be realized by **colnormalize** function or anyother method you like.
+Before merging components, the columns in ``W`` are required to be normalized to 1. The normalization can be realized by **colnormalize** function or any other method you like.
+
 
 **colnormalize**(W, H, p)
 
