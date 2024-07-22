@@ -77,7 +77,8 @@ julia> result_renmf = nmfmerge(float(X), 5=>4; alg = :cd, maxiter = max_iter);
 julia> result_renmf.objvalue/sum(abs2, X);
 0.00010318497977267333
 ```
-The relative fitting error between NMF solution and ground truth of NMFMerge is smaller than that of standard NMF. Thus, NMFMerge help NMF converge to better local minimum.
+The relative fitting error between NMF solution and ground truth of NMFMerge is about half that of standard NMF. Thus, NMFMerge helps NMF converge to a better local minimum.
+
 
 The comparison between standard NMF(HALS) and Merge:
 ![Sample Figure](images/simulation.png)
