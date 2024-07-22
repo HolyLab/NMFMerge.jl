@@ -105,7 +105,7 @@ Keyword arguments:
 
 ``tol_final``： The tolerence of final NMF, default:``10^{-4}``
 
-``tol_intermediate``: The tolerence of initial and overcomplete NMF, default: $\sqrt{\mathrm{tol\_final}}$
+``tol_intermediate``: The tolerence of initial and overcomplete NMF, default: $\sqrt{\mathrm{tol\\_final}}$
 
 
 ``W0``: initialization of initial NMF, default: ``nothing``
