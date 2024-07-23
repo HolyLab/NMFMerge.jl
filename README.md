@@ -102,7 +102,7 @@ Alternatively, ``ncomponents`` can be an integer denoting the final number of co
 
 Keyword arguments:
 
-``tol_final``： The tolerence of final NMF, default:``10^{-4}``
+``tol_final``： The tolerence of final NMF, default: $10^{-4}$
 
 ``tol_intermediate``: The tolerence of initial and overcomplete NMF, default: $\sqrt{\mathrm{tol\\_final}}$
 
