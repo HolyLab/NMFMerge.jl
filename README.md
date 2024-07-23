@@ -137,7 +137,9 @@ This function normalize ``||W[:, i]||_p = 1`` for ``i in 1:size(W, 2)``. Our man
 
 To use this function:
 `Wnormalized, Hnormalized = colnormalize(W, H, p)`
+
 -----
+
 If you already have a merge sequence and want to merge from ``size(W, 2)`` components to ``n`` components, you can use the function:
 
 **mergecolumns**(W, H, mergeseq; tracemerge)
