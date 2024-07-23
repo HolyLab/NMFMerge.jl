@@ -116,7 +116,7 @@ If one of ``W0`` and ``H0`` is ``nothing``, NNDSVD is used for initialization.
 
 Other keywords arguments are passed to ``NMF.nnmf``.
 
-
+-----
 Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenents, **colmerge2to1pq** function can merge ``r`` components to ``n``components. The details of this function is:
 
 **colmerge2to1pq**(W, H, n)
