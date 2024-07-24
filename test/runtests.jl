@@ -16,45 +16,100 @@ function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integ
     return Q1, Q2, c, τ1τ1, τ1τ2, τ2τ2
 end
 
+W_GT = [6 0 4 9;
+     0 4 8 3;
+     4 4 0 7;
+     9 1 1 1;
+     0 3 0 4;
+     8 1 4 0;
+     0 0 4 2;
+     0 9 5 5
+    ]
+
+H_GT = [6 10 8 2 0 1 2 10;
+     0 10 2 9 10 6 0 0;
+     3 5 0 2 4 0 0 8;
+     4 9 10 7 7 0 0 0
+    ]
+
+@testset "test top wrapper" begin
+    W = W_GT[:, 3:4]
+    H = H_GT[3:4, :]
+    X = W*H
+    standard_nmf = nnmf(float(X), 1; init=:nndsvd, tol=1e-12, initdata = svd(float(X)))
+    result_renmf = nmfmerge(float(X), 2=>1; alg = :cd, maxiter = 10^5, tol_final=1e-12, tol_intermediate = 1e-12);
+    W_standard, H_standard = standard_nmf.W, standard_nmf.H
+    W_renmf, H_renmf = result_renmf.W, result_renmf.H
+    W_standard, H_standard = colnormalize(W_standard, H_standard)
+    W_renmf, H_renmf = colnormalize(W_renmf, H_renmf)
+    @test sum(abs2, W_standard - W_renmf) <= 1e-12
+    @test sum(abs2, H_standard - H_renmf) <= 1e-12
+
+
+    standard_nmf = nnmf(float(X), 2; init=:nndsvd, tol=1e-12, initdata=svd(float(X)))
+    result_renmf = nmfmerge(float(X), 2=>2; alg=:cd, maxiter=10^5, tol_final=1e-12, tol_intermediate=1e-12)
+    W_standard, H_standard = standard_nmf.W, standard_nmf.H
+    W_renmf, H_renmf = result_renmf.W, result_renmf.H
+    W_standard, H_standard = colnormalize(W_standard, H_standard)
+    W_renmf, H_renmf = colnormalize(W_renmf, H_renmf)
+    @test sum(abs2, W_standard - W_renmf) <= 1e-12
+    @test sum(abs2, H_standard - H_renmf) <= 1e-12
+
+
+    X = rand(30, 20)
+    result_1 = nmfmerge(float(X), 10; alg=:cd)
+    result_2 = nmfmerge(float(X), 12 => 10; alg=:cd)
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+
+    result_1 = nmfmerge(float(X), 4; alg=:cd)
+    result_2 = nmfmerge(float(X), 5 => 4; alg=:cd)
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+
+    result_1 = nmfmerge(float(X), 8; alg=:cd)
+    result_2 = nmfmerge(float(X), 10 => 8; alg=:cd)
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+    
+end
+
 @testset "merge coefficients" begin
-    w1 = [9, 3, 7, 1, 4, 0, 2, 5]
-    h1 = [4 9 10 7 7 0 0 0]
-    w2 = [4, 8, 0, 1, 0, 4, 4, 5]
-    h2 = [3 5 0 2 4 0 0 8]
-    W = [w1 w2]
-    H = [h1; h2]
-    Wn, Hn = colnormalize(W, H)
-    W_v = [Wn[:, j] for j in axes(Wn, 2)]
-    H_v = [Hn[i, :] for i in axes(Hn, 1)]
+    for i in 1:3, j in i+1:4
+        W = W_GT[:, [i,j]]
+        H = H_GT[[i,j], :]
+        Wn, Hn = colnormalize(W, H)
+        W_v = [Wn[:, j] for j in axes(Wn, 2)]
+        H_v = [Hn[i, :] for i in axes(Hn, 1)]
 
-    Q1, Q2, _, _, _, _ =build_Qs(W_v, H_v, 1, 2)
-    @test issymmetric(Q1)
-    @test issymmetric(Q2)
-    F = eigen(Q1, Q2)
-    Fvals, Fvecs = F.values, F.vectors
-    idx = argmax(Fvals)
-    w = Fvecs[:,idx]
+        Q1, Q2, _, _, _, _ =build_Qs(W_v, H_v, 1, 2)
+        @test issymmetric(Q1)
+        @test issymmetric(Q2)
+        F = eigen(Q1, Q2)
+        Fvals, Fvecs = F.values, F.vectors
+        idx = argmax(Fvals)
+        w = Fvecs[:,idx]
 
-    τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
-    c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
-    u = [u[1], u[2]]
-    b = sqrt(τ^2/4-δ)
-    λ_max = τ/2+b
-    λ_min = δ/λ_max
-    
-    @test abs(λ_max - maximum(F.values))<=1e-12
-    @test abs(λ_min - minimum(F.values))<=1e-10
+        τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
+        c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
+        u = [u[1], u[2]]
+        b = sqrt(τ^2/4-δ)
+        λ_max = τ/2+b
+        λ_min = δ/λ_max
 
-    @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
+        @test abs(λ_max - maximum(F.values))<=1e-10
+        @test abs(λ_min - minimum(F.values))<=1e-10
 
-    @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
-    @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
-    @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
-    
-    W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
-    Err(Hm) = sum(abs2, W12 * Hm' - W * H)
-    @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
+        @test abs(u[1]*w[2] - w[1]*u[2])<1e-10
 
+        @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
+        @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
+        @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
+        
+        W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
+        Err(Hm) = sum(abs2, W12 * Hm' - W * H)
+        @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-10
+    end
 end
 
 @testset "Single-component image" begin
@@ -137,4 +192,3 @@ end
     @test pop!(mergids) == (1,2)
 
 end
-

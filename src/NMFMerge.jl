@@ -1,10 +1,30 @@
 module NMFMerge
 
-using LinearAlgebra, DataStructures
+using LinearAlgebra, DataStructures, NMF, GsvdInitialization
 
-export colnormalize,
+export nmfmerge,
+       colnormalize,
        colmerge2to1pq,
        mergecolumns
+
+function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+    f = svd(X)
+    if W0 === nothing || H0 === nothing
+        W0, H0 = NMF.nndsvd(X, ncomponents[2], initdata=f)
+    end
+    result_initial = nnmf(X, ncomponents[2]; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
+    W_initial, H_initial = result_initial.W, result_initial.H
+    kadd = ncomponents[1] - ncomponents[2]
+    kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
+    W_over_init, H_over_init = gsvdrecover(X, copy(W_initial), copy(H_initial), kadd, initdata=f)
+    result_over = nnmf(X, ncomponents[1]; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W_over_init), H0=copy(H_over_init))
+    W_over, H_over = result_over.W, result_over.H
+    W_over_normed, H_over_normed = colnormalize(W_over, H_over)
+    Wmerge, Hmerge, _ = colmerge2to1pq(W_over_normed, H_over_normed, ncomponents[2])
+    result_renmf = nnmf(X, ncomponents[2]; kwargs..., init=:custom, tol=tol_final, W0=copy(Wmerge), H0=copy(Hmerge))
+    return result_renmf
+end
+nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
     
 """
     colnormalize(W, H, p)
@@ -16,13 +36,16 @@ Wnormalized, Hnormalized = colnormalize(W, H, p)
 """
        
 function colnormalize!(W, H, p::Integer=2)
+    nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
         if !iszero(normw)
             W[:, j] = w/normw
             H[j, :] = H[j, :]*normw
+            push!(nonzerocolids, j)
         end
     end
+    W, H = W[:, nonzerocolids], H[nonzerocolids, :]
     return W, H
 end
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
@@ -82,10 +105,10 @@ end
 function solve_remix(S, T, id1, id2)
     τ, δ, c, h1h1, h1h2, h2h2 = build_tr_det(S, T, id1, id2)
     if h1h1 == 0
-        return c, zero(c), (zero(c),one(c))
+        return c, zero(c), (zero(c), one(c))
     end
     if h2h2 == 0
-        return c, zero(c), (one(c),zero(c))
+        return c, zero(c), (one(c), zero(c))
     end
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
