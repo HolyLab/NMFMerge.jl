@@ -10,7 +10,6 @@ This package includes the code of the paper 'An optimal pairwise merge algorithm
 This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.
 
 Let's start with a simple demo:
-Prerequisite: NMF.jl, GsvdInitialization
 
 Install the package
 ```julia
