@@ -25,7 +25,7 @@ function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediat
     return result_renmf
 end
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
-    
+
 """
     colnormalize(W, H, p)
 
@@ -34,7 +34,7 @@ This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
 To use this function:
 Wnormalized, Hnormalized = colnormalize(W, H, p)
 """
-       
+
 function colnormalize!(W, H, p::Integer=2)
     nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
@@ -60,8 +60,12 @@ Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n), where Wmerge and Hmerge are 
 """
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
-    S = [S[:, j] for j in axes(S, 2)];
-    T = [T[i, :] for i in axes(T, 1)];
+    S = let S = S    # julia #15276
+        [S[:, j] for j in axes(S, 2)]
+    end
+    T = let T = T
+        [T[i, :] for i in axes(T, 1)]
+    end
     for s in S
         abs(norm(s)-1)<1e-12 || throw(ArgumentError("W columns must be normalized"))
     end
@@ -96,7 +100,7 @@ function pqupdate2to1!(pq, S::AbstractVector, T::AbstractVector, id01::Integer, 
     for id in overlapids
         if !isempty(S[id]) && !isempty(S[id01])
             loss = solve_remix(S, T, id, id01)[2]
-            enqueue!(pq, (id, id01), loss)    
+            enqueue!(pq, (id, id01), loss)
         end
     end
     return pq
@@ -151,7 +155,7 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
     T12 = T1+T2
     return S12, T12
 end
-  
+
 """
     mergecolumns(W, H, mergeseq; tracemerge=false)
 
