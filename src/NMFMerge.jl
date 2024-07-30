@@ -10,10 +10,11 @@ export nmfmerge,
 function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
     n1, n2 = ncomponents
     f = tsvd(X, n2)
+    Un, Sn, Vn = f
     if W0 === nothing || H0 === nothing
-        W0, H0 = NMF.nndsvd(X, n2, initdata=(U = f[1], S = f[2], V = f[3]))
+        W0, H0 = NMF.nndsvd(X, n2, initdata=(U = Un, S = Sn, V = Vn))
     end
-    result_initial = nnmf(X, n2; kwargs..., init=:custom, tol=tol_intermediate, W0=W0, H0=H0)
+    result_initial = nnmf(X, n2; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
     W_initial, H_initial = result_initial.W, result_initial.H
     kadd = n1 - n2
     kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
