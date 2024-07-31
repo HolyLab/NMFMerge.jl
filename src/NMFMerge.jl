@@ -1,6 +1,6 @@
 module NMFMerge
 
-using LinearAlgebra, DataStructures, NMF, GsvdInitialization
+using LinearAlgebra, DataStructures, NMF, GsvdInitialization, TSVD
 
 export nmfmerge,
        colnormalize,
@@ -8,32 +8,25 @@ export nmfmerge,
        mergecolumns
 
 function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
-    f = svd(X)
+    n1, n2 = ncomponents
+    f = tsvd(X, n2)
+    Un, Sn, Vn = f
     if W0 === nothing || H0 === nothing
-        W0, H0 = NMF.nndsvd(X, ncomponents[2], initdata=f)
+        W0, H0 = NMF.nndsvd(X, n2, initdata=(U = Un, S = Sn, V = Vn))
     end
-    result_initial = nnmf(X, ncomponents[2]; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
+    result_initial = nnmf(X, n2; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
     W_initial, H_initial = result_initial.W, result_initial.H
-    kadd = ncomponents[1] - ncomponents[2]
+    kadd = n1 - n2
     kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
-    W_over_init, H_over_init = gsvdrecover(X, copy(W_initial), copy(H_initial), kadd, initdata=f)
-    result_over = nnmf(X, ncomponents[1]; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W_over_init), H0=copy(H_over_init))
+    W_over_init, H_over_init = gsvdrecover(X, W_initial, H_initial, kadd, f)
+    result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
-    Wmerge, Hmerge, _ = colmerge2to1pq(W_over_normed, H_over_normed, ncomponents[2])
-    result_renmf = nnmf(X, ncomponents[2]; kwargs..., init=:custom, tol=tol_final, W0=copy(Wmerge), H0=copy(Hmerge))
+    Wmerge, Hmerge, _ = colmerge2to1pq(W_over_normed, H_over_normed, n2)
+    result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
     return result_renmf
 end
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
-
-"""
-    colnormalize(W, H, p)
-
-This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
-
-To use this function:
-Wnormalized, Hnormalized = colnormalize(W, H, p)
-"""
 
 function colnormalize!(W, H, p::Integer=2)
     nonzerocolids = Int[]
@@ -48,15 +41,31 @@ function colnormalize!(W, H, p::Integer=2)
     W, H = W[:, nonzerocolids], H[nonzerocolids, :]
     return W, H
 end
+
+"""
+`colnormalize(W, H, p=2)`
+
+This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
+
+To use this function:
+
+`Wnormalized, Hnormalized = colnormalize(W, H, p)`
+
+"""  
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-    colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
+`colmerge2to1pq(W::AbstractArray, H::AbstractArray, n::Integer)`
 
-This function merges components in W and H (columns in W and rows in H) from original number of components to n components (n columns and rows left in W and H respectively).
+This function merges components in `W` and `H` (columns in `W` and rows in `H`) from original number of components to `n` components (`n` columns and rows left in `W` and `H` respectively).
 
 To use this function:
-Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n), where Wmerge and Hmerge are the merged results with n components. mergeseq is the sequence of merge pair ids (id1, id2), which is the components id of single merge.
+
+`Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)`
+
+`Wmerge` and `Hmerge` are the merged results with `n` components. 
+
+`mergeseq` is the sequence of merge pair ids (id1, id2), which is the components id of single merge.
 """
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
@@ -157,12 +166,21 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
 end
 
 """
-    mergecolumns(W, H, mergeseq; tracemerge=false)
+`mergecolumns(W, H, mergeseq; tracemerge=false)`
 
-This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``) according to the sequence of merge pair ids ``mergeseq``.
+This function merges components in `W` and `H` (columns in `W` and rows in `H`) according to the sequence of merge pair ids `mergeseq`.
 
 To use this function:
-Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge), where ``Wmerge`` and ``Hmerge`` are the merged results. ``WHstage::Vector{Tuple{Matrix, Matrix}}`` includes the results of each merge stage. ``WHstage=[]`` if ``tracemerge=false``. ``Err::Vector`` includes merge penalty of each merge stage.
+
+`Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)`
+
+`Wmerge` and `Hmerge` are the merged results. 
+
+`WHstage::Vector{Tuple{Matrix, Matrix}}` includes the results of each merge stage. 
+
+`WHstage=[]` if `tracemerge=false`. 
+
+`Err::Vector` includes merge penalty of each merge stage.
 """
 function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArray; tracemerge::Bool = false)
     Err = Float64[]
