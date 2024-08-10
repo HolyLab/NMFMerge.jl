@@ -5,21 +5,21 @@
 [![Build Status](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/HolyLab/NMFMerge.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/HolyLab/NMFMerge.jl)
 
-This package includes the code of the paper 'An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization`. It is used to project Non-negative matrix factorization(NMF) solutions from high-dimensional space to lower dimensional space by optimally merging NMF components in higher dimensional space.
+This package implements the technique in the paper "An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization." It is used to project Non-negative matrix factorization(NMF) solutions from a high-dimensional space to lower dimensional space by optimally and sequentially merging NMF component pairs.
 
 This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.
 
 Let's start with a simple demo:
 
-Install the package
+Install the package: type `]` at the `julia>` prompt to enter `pkg>` mode, and type
 ```julia
-julia>] add NMFMerge;
+pkg> add NMFMerge;
 ```
 
-Considering the ground truth
+We'll use the following ground truth
 
 ```math
-\begin{align} 
+\begin{align}
         \begin{aligned}
             \mathbf{W} = \begin{pmatrix}
                 6 & 0 & 4 & 9 \\
@@ -29,7 +29,7 @@ Considering the ground truth
                 0 & 3 & 0 & 4 \\
                 8 & 1 & 4 & 0 \\
                 0 & 0 & 4 & 2 \\
-                0 & 9 & 5 & 5 
+                0 & 9 & 5 & 5
             \end{pmatrix}, \quad
             \mathbf{H}^{\mathrm{T}} = \begin{pmatrix}
                 6 & 0 & 3 & 4 \\
@@ -79,7 +79,7 @@ julia> result_renmf.objvalue/sum(abs2, X);
 The relative fitting error between NMF solution and ground truth of NMFMerge is about half that of standard NMF. Thus, NMFMerge helps NMF converge to a better local minimum.
 
 
-The comparison between standard NMF(HALS) and Merge:
+The comparison between standard NMF(HALS) and NMFMerge:
 ![Sample Figure](images/simulation.png)
 
 Consistent with the conclusion from the comparision of ralative fitting error, the figure suggests that the results of NMFMerge(Brown) fits the ground truth(Green) better than standard NMF(Magenta). (At 44 points out of 64 points, NMFMerge results are closer to the ground truth.)
