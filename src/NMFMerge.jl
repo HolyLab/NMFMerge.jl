@@ -7,6 +7,34 @@ export nmfmerge,
        colmerge2to1pq,
        mergecolumns
 
+"""
+    result = nmfmerge(X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+
+Performs "NMF-Merge" on data matrix `X`.
+
+Arguments:
+
+- `X::AbstractMatrix`: the data matrix to be factorized
+
+- `ncomponents::Pair{Int,Int}`: in the form of `n1 => n2`, merging from `n1` components to `n2`components,
+  where `n1` is the number of components for overcomplete NMF, and `n2` is the number of components for the final NMF.
+  We require `n1 >= n2`.
+
+Alternatively, `ncomponents` can be an integer denoting the final number of components. In this case, `nmfmerge`
+defaults to an approximate 20% component excess before merging.
+
+
+Keyword arguments:
+
+- `tol_final`: The tolerance of final NMF
+
+- `tol_intermediate`: The tolerence of initial and overcomplete NMF
+
+`W0`, `H0`: initialization for the initial NMF. If at least one of `W0` and `H0` is `nothing`, NNDSVD is used for initialization.
+
+
+Other keywords arguments are passed to `NMF.nnmf`.
+"""
 function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
     n1, n2 = ncomponents
     f = tsvd(X, n2)
@@ -43,29 +71,23 @@ function colnormalize!(W, H, p::Integer=2)
 end
 
 """
-`colnormalize(W, H, p=2)`
+    Wnormalized, Hnormalized = colnormalize(W, H, p=2)
 
-This function normalize ||W[:, i]||_p = 1 for i in 1:size(W, 2)
+Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 
-To use this function:
-
-`Wnormalized, Hnormalized = colnormalize(W, H, p)`
-
-"""  
+"""
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-`colmerge2to1pq(W::AbstractArray, H::AbstractArray, n::Integer)`
+    Wmerge, Hmerge, mergeseq = colmerge2to1pq(W::AbstractArray, H::AbstractArray, n::Integer)
 
-This function merges components in `W` and `H` (columns in `W` and rows in `H`) from original number of components to `n` components (`n` columns and rows left in `W` and `H` respectively).
+Merge components in `W` and `H` (columns in `W` and rows in `H`) until only `n`
+components remain.
 
-To use this function:
+`Wmerge` and `Hmerge` are the merged results with `n` components.
 
-`Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)`
-
-`Wmerge` and `Hmerge` are the merged results with `n` components. 
-
-`mergeseq` is the sequence of merge pair ids (id1, id2), which is the components id of single merge.
+`mergeseq` is the sequence of merge pair ids (id1, id2). Values larger than the
+number of columns in `W` indicate the output of previous merge steps.
 """
 function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
@@ -166,19 +188,13 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
 end
 
 """
-`mergecolumns(W, H, mergeseq; tracemerge=false)`
+    Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge=false)
 
-This function merges components in `W` and `H` (columns in `W` and rows in `H`) according to the sequence of merge pair ids `mergeseq`.
+Merge components in `W` and `H` (columns in `W` and rows in `H`) according to the sequence of merge pair ids `mergeseq`.
 
-To use this function:
+`Wmerge` and `Hmerge` are the merged results.
 
-`Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)`
-
-`Wmerge` and `Hmerge` are the merged results. 
-
-`WHstage::Vector{Tuple{Matrix, Matrix}}` includes the results of each merge stage. 
-
-`WHstage=[]` if `tracemerge=false`. 
+`WHstage::Vector{Tuple{Matrix, Matrix}}` includes the results of each merge stage. `WHstage` is empty if `tracemerge=false`.
 
 `Err::Vector` includes merge penalty of each merge stage.
 """
