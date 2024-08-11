@@ -1,7 +1,7 @@
 name = "NMFMerge"
 uuid = "9cc52eda-dfaf-4e21-aae3-9f26bed153a3"
 authors = ["youdongguo <1010705897@qq.com> and contributors"]
-version = "1.0.0-DEV"
+version = "1.0.0"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
