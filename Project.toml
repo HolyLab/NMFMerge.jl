@@ -13,7 +13,6 @@ TSVD = "9449cd9e-2762-5aa3-a617-5413e99d722e"
 [compat]
 DataStructures = "0.18"
 ForwardDiff = "0.10"
-GsvdInitialization = "0.1"
 LinearAlgebra = "1"
 NMF = "1"
 TSVD = "0.4"
