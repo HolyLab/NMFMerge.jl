@@ -1,0 +1,24 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.1.0
+title: 'An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization'
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Youdong
+    family-names: Guo
+    orcid: 'https://orcid.org/0009-0007-7787-3722'
+  - given-names: Timothy E.
+    family-names: Holy
+    orcid: 'https://orcid.org/0000-0002-2429-1071'
+identifiers:
+  - type: url
+    value: 'https://arxiv.org/abs/2408.09013'
+    description: The ArXiv deposit of the encompassing paper.
+doi: 'https://doi.org/10.48550/arXiv.2408.09013'
+repository-code: 'https://github.com/HolyLab/NMFMerge.jl
+abstract: >-
+  Non-negative matrix factorization (NMF) is a key technique for feature extraction and widely used in source separation. However, existing algorithms may converge to poor local minima, or to one of several minima with similar objective value but differing feature parametrizations. Additionally, the performance of NMF greatly depends on the number of components, but choosing the optimal count remains a challenge. Here we show that some of these weaknesses may be mitigated by performing NMF in a higher-dimensional feature space and then iteratively combining components with an analytically-solvable pairwise merge strategy. Experimental results demonstrate our method helps NMF achieve better local optima and greater consistency of the solutions. Iterative merging also provides an efficient and informative framework for choosing the number of components. Surprisingly, despite these extra steps, our approach often improves computational performance by reducing the occurrence of ``convergence stalling'' near saddle points. This can be recommended as a preferred approach for most applications of NMF.

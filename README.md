@@ -152,6 +152,5 @@ To use this function:
 `Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)`, where ``Wmerge`` and ``Hmerge`` are the merged results. ``WHstage::Vector{Tuple{Matrix, Matrix}}`` includes the results of each merge stage. ``WHstage=[]`` if ``tracemerge=false``. ``Err::Vector`` includes merge penalty of each merge stage.
 
 ## Citation
-The code is welcomed to be used in your publication, please cite:
-
+Thanks for citing this work! See the "Cite this repository" link in the "About" bar for format options.
 
