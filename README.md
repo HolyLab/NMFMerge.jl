@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/HolyLab/NMFMerge.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/HolyLab/NMFMerge.jl)
 
-This package implements the technique in the paper "An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization." It is used to project Non-negative matrix factorization(NMF) solutions from a high-dimensional space to lower dimensional space by optimally and sequentially merging NMF component pairs.
+This package implements the technique in the paper [An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization](https://arxiv.org/abs/2408.09013). It is used to project Non-negative matrix factorization(NMF) solutions from a high-dimensional space to lower dimensional space by optimally and sequentially merging NMF component pairs.
 
 This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.
 
@@ -48,6 +48,11 @@ We'll use the following ground truth
 using NMF, GsvdInitialization
 using NMFMerge
 ```
+
+Packages:
+
+NMF: https://github.com/JuliaStats/NMF.jl
+GsvdInitialization: https://github.com/HolyLab/GsvdInitialization.jl
 
 ```julia
 julia> X = W*H
