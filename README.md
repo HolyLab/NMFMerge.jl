@@ -50,7 +50,7 @@ using NMFMerge
 ```
 
 Packages:
-[NMF](https://github.com/JuliaStats/NMF.jl)
+[NMF](https://github.com/JuliaStats/NMF.jl), 
 [GsvdInitialization](https://github.com/HolyLab/GsvdInitialization.jl)
 
 ```julia
