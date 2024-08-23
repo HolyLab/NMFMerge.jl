@@ -40,6 +40,7 @@ H_GT = [6 10 8 2 0 1 2 10;
     W_renmf, H_renmf = result_renmf.W, result_renmf.H
     @test size(W_renmf, 2) == 2
     @test size(H_renmf, 1) == 2
+    @test sum(abs2, X - W_renmf*H_renmf) <= 1e-12
 
     standard_nmf = nnmf(float(X), 2; init=:nndsvd, tol=1e-12, initdata=svd(float(X)))
     result_renmf = nmfmerge(float(X), 2=>2; alg=:cd, maxiter=10^5, tol_final=1e-12, tol_intermediate=1e-12)
