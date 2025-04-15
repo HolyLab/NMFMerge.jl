@@ -148,10 +148,11 @@ function solve_remix(S, T, id1, id2)
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
-    if c == 0 && h1h2 == 0
+    den = (h1h2+c*h2h2)*2
+    if iszero(den)
         u = h1h1 >= h2h2 ? (one(c), zero(c)) : (zero(c), one(c))
     else
-        ξ = (h1h1-h2h2+2b)/((h1h2+c*h2h2)*2)
+        ξ = (h1h1-h2h2+2b)/den
         u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
     end
     return c, λ_min, u
