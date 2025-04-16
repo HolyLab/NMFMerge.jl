@@ -9,6 +9,13 @@ This package implements the technique in the paper [An optimal pairwise merge al
 
 This approach is motivated by the idea that convergence of NMF becomes poor when one is forced to make difficult tradeoffs in describing different features of the data matrix; thus, performing an initial factorization with an excessive number of components grants the opportunity to escape such constraints and reliably describe the full behavior of the data matrix. Later, any redundant or noisy components are identified and merged together.
 
+The concept of NMF-Merge in an illustrative example:
+![Sample Figure](images/ovrsimumerge.png)
+
+The data matrix is $\mathbf{X}=\mathbf{WH}+\mathbf{N}$, where $\mathbf{W}$ and $\mathbf{H}$ are rank-5 and $\mathbf{N}$ denotes the noise. The 'Good' and 'Bad' factorizations (blue box) represent two local minima reached by rank-5 NMF across 1000 different initializations, while the factorizations in the green boxes denote minima identified by NMF with $r\ge 6$. (These minima were found from every random initialization tested, but uniqueness is not required.) The higher-rank solutions can be merged to produce a rank 5 factorization using NMFMerge. Thus, by first identifying a higher-rank NMF, and then merging to lower rank, you can more reliably identify high-quality solutions. We demonstrate this experimentally in the linked manuscript.
+
+
+
 Let's start with a simple demo:
 
 Install the package: type `]` at the `julia>` prompt to enter `pkg>` mode, and type
