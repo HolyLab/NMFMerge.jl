@@ -12,7 +12,7 @@ This approach is motivated by the idea that convergence of NMF becomes poor when
 The concept of NMF-Merge in an illustrative example:
 ![Sample Figure](images/ovrsimumerge.png)
 
-The concept of NMF-Merge in an illustrative example. The data matrix is $\mathbf{X}=\mathbf{WH}+\mathbf{N}$, where $\mathbf{W}$ and $\mathbf{H}$ are rank-5 and $\mathbf{N}$ denotes the noise. The 'Good' and 'Bad' factorizations (blue box) represent two local minima reached by rank-5 NMF across 1000 different initializations, while the factorizations in the green boxes denote minima identified by NMF with $r\ge 6$. (These minima were found from every random initialization tested, but uniqueness is not required.) The higher-rank solutions can be merged to produce a rank 5 factorization using NMFMerge.
+The data matrix is $\mathbf{X}=\mathbf{WH}+\mathbf{N}$, where $\mathbf{W}$ and $\mathbf{H}$ are rank-5 and $\mathbf{N}$ denotes the noise. The 'Good' and 'Bad' factorizations (blue box) represent two local minima reached by rank-5 NMF across 1000 different initializations, while the factorizations in the green boxes denote minima identified by NMF with $r\ge 6$. (These minima were found from every random initialization tested, but uniqueness is not required.) The higher-rank solutions can be merged to produce a rank 5 factorization using NMFMerge.
 
 
 Let's start with a simple demo:
