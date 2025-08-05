@@ -8,13 +8,13 @@ export nmfmerge,
        mergecolumns
 
 """
-    result = nmfmerge(X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+    result = nmfmerge(queuepenalty, X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
 
 Performs "NMF-Merge" on data matrix `X`.
 
 Arguments:
 
--`queuepenalty`: a function of the form `f(λ_min, t1sq, t2sq)` that computes the penalty for merging two components, where `λ_min` is the smaller eigenvalue of the generalized eigenvalue problem.
+-`queuepenalty`: a function of the form `f(E, t1sq, t2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: f(E, t1sq, t2sq)=E.
 
 - `X::AbstractMatrix`: the data matrix to be factorized
 
@@ -109,7 +109,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
     Nt >= n || throw(ArgumentError("Final solution more than original size"))
     pq = PriorityQueue{Tuple{Int,Int},Float64}()
     for id0 in length(S):-1:2
-        pq = pqupdate2to1!(pq, queuepenalty, S, T, id0, 1:id0-1)
+        pq = pqupdate2to1!(queuepenalty, pq, S, T, id0, 1:id0-1)
     end
     m = Nt
     while m > n
@@ -119,7 +119,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
         end
         push!(mrgseq, (id0, id1))
         S, T, id01, _ = mergecol2to1!(S, T, id0, id1);
-        pqupdate2to1!(pq, queuepenalty, S, T, id01, 1:id01-1);
+        pqupdate2to1!(queuepenalty, pq, S, T, id01, 1:id01-1);
         m -= 1
     end
     Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
@@ -127,7 +127,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
 end
 colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer) = colmerge2to1pq(mergepenalty, S, T, n)
 
-function pqupdate2to1!(pq, queuepenalty::Function, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
+function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids
         if !isempty(S[id]) && !isempty(S[id01])
             t1sq, t1t2, t2sq, c = build_tr_det(S, T, id, id01)

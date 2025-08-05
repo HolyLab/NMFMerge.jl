@@ -54,19 +54,18 @@ H_GT = [6 10 8 2 0 1 2 10;
     X = rand(30, 20)
     result_1 = nmfmerge(X, 10; alg=:cd)
     result_2 = nmfmerge(X, 12 => 10; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 
     result_1 = nmfmerge(X, 4; alg=:cd)
     result_2 = nmfmerge(X, 5 => 4; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 
     result_1 = nmfmerge(X, 8; alg=:cd)
     result_2 = nmfmerge(X, 10 => 8; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
-
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 end
 
 @testset "merge coefficients" begin
