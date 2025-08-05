@@ -221,6 +221,5 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
 end
 
 mergepenalty(λ_min, t1sq, t2sq) = λ_min
-shotpenalty(λ_min, t1sq, t2sq) = λ_min / sqrt(min(t1sq, t2sq))
 
 end
