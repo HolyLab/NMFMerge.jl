@@ -32,7 +32,7 @@ H_GT = [6 10 8 2 0 1 2 10;
      4 9 10 7 7 0 0 0
     ]
 
-@testset "test top wrapper" begin        
+@testset "test top wrapper" begin
     W = W_GT[:, 3:4]
     H = H_GT[3:4, :]
     X = W*H
@@ -51,7 +51,6 @@ H_GT = [6 10 8 2 0 1 2 10;
     @test sum(abs2, W_standard - W_renmf) <= 1e-12
     @test sum(abs2, H_standard - H_renmf) <= 1e-12
 
-
     X = rand(30, 20)
     result_1 = nmfmerge(X, 10; alg=:cd)
     result_2 = nmfmerge(X, 12 => 10; alg=:cd)
@@ -67,7 +66,7 @@ H_GT = [6 10 8 2 0 1 2 10;
     result_2 = nmfmerge(X, 10 => 8; alg=:cd)
     @test sum(abs2, result_1.W - result_2.W) <= 1e-12
     @test sum(abs2, result_1.H - result_2.H) <= 1e-12
-    
+
 end
 
 @testset "merge coefficients" begin
@@ -86,8 +85,10 @@ end
         idx = argmax(Fvals)
         w = Fvecs[:,idx]
 
-        τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
-        c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
+        h1h1, h1h2, h2h2, c = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
+        τ = h1h1+2c*h1h2+h2h2
+        δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
+        c, p, u = NMFMerge.solve_remix(h1h1, h1h2, h2h2, c)
         u = [u[1], u[2]]
         b = sqrt(τ^2/4-δ)
         λ_max = τ/2+b
@@ -101,8 +102,8 @@ end
         @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
         @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
         @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
-        
-        W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
+
+        W12, H12, _ = NMFMerge.mergepair(W_v, H_v, 1, 2)
         Err(Hm) = sum(abs2, W12 * Hm' - W * H)
         @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-10
     end
@@ -121,7 +122,7 @@ end
     imgnf = NMF.solve!(NMF.CoordinateDescent{Float64}(), img, W0, H0)
     W1, H1 = imgnf.W, imgnf.H
     W1n, H1n = colnormalize(W1, H1)
-    [@test abs(norm(W1n[:,j], 2)-1) <= 1e-12 for j in axes(W1n, 2)] 
+    [@test abs(norm(W1n[:,j], 2)-1) <= 1e-12 for j in axes(W1n, 2)]
 
     W2 = [W1n[:, j] for j in axes(W1n, 2)];
     H2 = [H1n[i, :] for i in axes(H1n, 1)];
@@ -134,13 +135,15 @@ end
     idx = argmax(Fvals)
     w = Fvecs[:,idx]
 
-    τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
-    c, p, u = NMFMerge.solve_remix(W2, H2, 1, 2)
+    h1h1, h1h2, h2h2, c = NMFMerge.build_tr_det(W2, H2, 1, 2)
+    τ = h1h1+2c*h1h2+h2h2
+    δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
+    c, p, u = NMFMerge.solve_remix(h1h1, h1h2, h2h2, c)
     u = [u[1], u[2]]
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
     λ_min = δ/λ_max
-    
+
     @test abs(λ_max - maximum(F.values))<=1e-12
     @test abs(λ_min - minimum(F.values))<=1e-10
 
@@ -150,7 +153,7 @@ end
     @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
     @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
 
-    W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
+    W12, H12, _ = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
     @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
 
@@ -169,7 +172,7 @@ end
     N1b = randn(length(S1)); N1b = N1b / norm(N1b) * coef
     T2 = zero(T1)
     T2[15] = 0.25 * sqrt(min(sum(abs2, N1a) * sum(abs2, T1a), sum(abs2, N1b) * sum(abs2, T1b)))
-    
+
     W, H = [S1 S1 S2], [T1a'; T1b'; T2']
     W0, H0 = [S1 S2], [T1'; T2']
     Wn, Hn = colnormalize(W, H)
