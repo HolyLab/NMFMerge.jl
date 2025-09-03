@@ -8,13 +8,13 @@ export nmfmerge,
        mergecolumns
 
 """
-    result = nmfmerge(queuepenalty, X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+    result = nmfmerge([queuepenalty], X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
 
 Performs "NMF-Merge" on data matrix `X`.
 
 Arguments:
 
--`queuepenalty`: a function of the form `f(E, t1sq, t2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: f(E, t1sq, t2sq)=E.
+-`queuepenalty`: a function of the form `f(E, h1sq, h2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: f(E, h1sq, h2sq)=E. h1sq and h2sq are the squared norms of the corresponding rows in H.
 
 - `X::AbstractMatrix`: the data matrix to be factorized
 
@@ -83,10 +83,22 @@ Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-    Wmerge, Hmerge, mergeseq = colmerge2to1pq(W::AbstractArray, H::AbstractArray, n::Integer)
+    Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray, n::Integer)
 
 Merge components in `W` and `H` (columns in `W` and rows in `H`) until only `n`
 components remain.
+
+Arguments:
+
+-`queuepenalty`: The same as in `nmfmerge`. Default: f(E, h1sq, h2sq)=E.
+
+- `W::AbstractArray`: The basis matrix with normalized columns.
+
+- `H::AbstractArray`: The coefficient matrix.
+
+- `n::Integer`: The final number of components after merging.
+
+Outputs:
 
 `Wmerge` and `Hmerge` are the merged results with `n` components.
 
