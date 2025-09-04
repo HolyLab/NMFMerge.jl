@@ -198,4 +198,15 @@ end
     @test W12 ≈ wrand
     @test H12 ≈ Hs[1]
     @test iszero(loss)
+
+    wrand1 = rand(5)
+    wrand1 ./= norm(wrand1)
+    Ws = [wrand zeros(5) wrand wrand1]
+    Hs = [rand(10) rand(10) zeros(10) rand(10)]'
+    Wmerge, Hmerge, _ = colmerge2to1pq(Ws, Hs, 1)
+    @test size(Wmerge, 2) == 1
+
+    W14, H14, _ = NMFMerge.mergepair([Ws[:,1], Ws[:,4]], [Hs[1,:], Hs[4,:]], 1, 2)
+    @test W14 ≈ Wmerge[:]
+    @test H14 ≈ Hmerge[:]
 end
