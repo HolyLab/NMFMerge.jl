@@ -114,7 +114,8 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
         [T[i, :] for i in axes(T, 1)]
     end
     for s in S
-        abs(norm(s)-1)<1e-12 || throw(ArgumentError("W columns must be normalized"))
+        snorm = norm(s)
+        (abs(snorm-1)<1e-12 && !iszero(snorm)) || throw(ArgumentError("W columns must be normalized"))
     end
     Nt = length(S)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
@@ -153,11 +154,16 @@ end
 function solve_remix(h1h1::AbstractFloat, h1h2::AbstractFloat, h2h2::AbstractFloat, c::AbstractFloat)
     τ = h1h1+2c*h1h2+h2h2
     δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
-    if h1h1 == 0
+    if iszero(h1h1)
         return c, zero(c), (zero(c), one(c))
     end
-    if h2h2 == 0
+    if iszero(h2h2)
         return c, zero(c), (one(c), zero(c))
+    end
+    if iszero(c)
+        # Check whether W1 or W2 is zero
+        iszero(sum(abs2, S[id1])) && return c, zero(h1h1), (zero(c), one(c))
+        iszero(sum(abs2, S[id2])) && return c, zero(h2h2), (one(c), zero(c))
     end
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b

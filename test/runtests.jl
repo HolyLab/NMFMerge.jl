@@ -64,6 +64,7 @@ H_GT = [6 10 8 2 0 1 2 10;
 
     result_1 = nmfmerge(X, 8; alg=:cd)
     result_2 = nmfmerge(X, 10 => 8; alg=:cd)
+
     @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
     @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 end
@@ -102,7 +103,7 @@ end
         @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
         @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
 
-        W12, H12, _ = NMFMerge.mergepair(W_v, H_v, 1, 2)
+        W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
         Err(Hm) = sum(abs2, W12 * Hm' - W * H)
         @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-10
     end
@@ -189,4 +190,15 @@ end
     @test pop!(copy(mergids)) == Ids[i]
     @test pop!(mergids) == (1,2)
 
+end
+
+@testset "Merge zero component" begin
+    wrand = rand(5)
+    wrand ./= norm(wrand)
+    Ws = [wrand, zeros(5)]
+    Hs = [rand(10), rand(10)]
+    W12, H12, loss = NMFMerge.mergepair(Ws, Hs, 1, 2)
+    @test W12 ≈ wrand
+    @test H12 ≈ Hs[1]
+    @test iszero(loss)
 end
