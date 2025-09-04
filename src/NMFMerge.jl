@@ -139,11 +139,16 @@ end
 
 function solve_remix(S, T, id1, id2)
     τ, δ, c, h1h1, h1h2, h2h2 = build_tr_det(S, T, id1, id2)
-    if h1h1 == 0
+    if iszero(h1h1)
         return c, zero(c), (zero(c), one(c))
     end
-    if h2h2 == 0
+    if iszero(h2h2)
         return c, zero(c), (one(c), zero(c))
+    end
+    if iszero(c)
+        # Check whether W1 or W2 is zero
+        iszero(sum(abs2, S[id1])) && return c, zero(h1h1), (zero(c), one(c))
+        iszero(sum(abs2, S[id2])) && return c, zero(h2h2), (one(c), zero(c))
     end
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
