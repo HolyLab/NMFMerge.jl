@@ -143,17 +143,15 @@ colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer) = colmerge2to1pq(
 function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids
         if !isempty(S[id]) && !isempty(S[id01])
-            t1sq, t1t2, t2sq, c = build_tr_det(S, T, id, id01)
-            loss = solve_remix(t1sq, t1t2, t2sq, c)[2]
+            _, loss, _, t1sq, t2sq = solve_remix(S, T, id, id01)
             enqueue!(pq, (id, id01), queuepenalty(loss, t1sq, t2sq))
         end
     end
     return pq
 end
 
-function solve_remix(h1h1::AbstractFloat, h1h2::AbstractFloat, h2h2::AbstractFloat, c::AbstractFloat)
-    τ = h1h1+2c*h1h2+h2h2
-    δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
+function solve_remix(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
+    τ, δ, c, h1h1, h1h2, h2h2 = build_tr_det(S, T, id1, id2)
     if iszero(h1h1)
         return c, zero(c), (zero(c), one(c))
     end
@@ -175,13 +173,17 @@ function solve_remix(h1h1::AbstractFloat, h1h2::AbstractFloat, h2h2::AbstractFlo
         ξ = (h1h1-h2h2+2b)/den
         u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
     end
-    return c, λ_min, u
+    return c, λ_min, u, h1h1, h2h2
 end
 
 function build_tr_det(W::AbstractVector, H::AbstractVector, id1::Integer, id2::Integer)
-    h1sq, h1h2, h2sq = H[id1]'*H[id1], H[id1]'*H[id2], H[id2]'*H[id2]
-    c = W[id1]'*W[id2] # assumes normalization
-    return h1sq, h1h2, h2sq, c
+    c = W[id1]'*W[id2]
+    h1h1 = H[id1]'*H[id1]
+    h1h2 = H[id1]'*H[id2]
+    h2h2 = H[id2]'*H[id2]
+    τ = h1h1+2c*h1h2+h2h2
+    δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
+    return τ, δ, c, h1h1, h1h2, h2h2
 end
 
 function mergecol2to1!(S::AbstractVector, T::AbstractVector, id0::Integer, id1::Integer)
@@ -194,8 +196,7 @@ function mergecol2to1!(S::AbstractVector, T::AbstractVector, id0::Integer, id1::
 end
 
 function mergepair(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
-    t1sq, t1t2, t2sq, c = build_tr_det(S, T, id1, id2)
-    c, loss, u = solve_remix(t1sq, t1t2, t2sq, c)
+    c, loss, u, _, _ = solve_remix(S, T, id1, id2)
     S12, T12 = remix_enact(S, T, id1, id2, c, u)
     return S12, T12, loss
 end

@@ -85,10 +85,8 @@ end
         idx = argmax(Fvals)
         w = Fvecs[:,idx]
 
-        h1h1, h1h2, h2h2, c = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
-        τ = h1h1+2c*h1h2+h2h2
-        δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
-        c, p, u = NMFMerge.solve_remix(h1h1, h1h2, h2h2, c)
+        τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
+        c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W_v, H_v, 1, 2)
         u = [u[1], u[2]]
         b = sqrt(τ^2/4-δ)
         λ_max = τ/2+b
@@ -135,10 +133,9 @@ end
     idx = argmax(Fvals)
     w = Fvecs[:,idx]
 
-    h1h1, h1h2, h2h2, c = NMFMerge.build_tr_det(W2, H2, 1, 2)
-    τ = h1h1+2c*h1h2+h2h2
-    δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
-    c, p, u = NMFMerge.solve_remix(h1h1, h1h2, h2h2, c)
+
+    τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
+    c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W2, H2, 1, 2)
     u = [u[1], u[2]]
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
