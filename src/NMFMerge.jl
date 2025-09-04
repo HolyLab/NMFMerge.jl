@@ -98,7 +98,8 @@ function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
         [T[i, :] for i in axes(T, 1)]
     end
     for s in S
-        abs(norm(s)-1)<1e-12 || throw(ArgumentError("W columns must be normalized"))
+        snorm = norm(s)
+        (abs(snorm-1)<1e-12 && !iszero(snorm)) || throw(ArgumentError("W columns must be normalized"))
     end
     Nt = length(S)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
