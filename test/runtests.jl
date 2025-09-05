@@ -199,3 +199,23 @@ end
     @test H12 ≈ Hs[1]
     @test iszero(loss)
 end
+
+@testset "test customized merge function" begin
+    Ws = [rand(5) rand(5) rand(5)]
+    Hs = [rand(10) rand(10) rand(10)]'
+    Wsn, Hsn = colnormalize(Ws, Hs)
+    Wsn1 = [Wsn[:, j] for j in axes(Wsn, 2)]
+    Hsn1 = [Hsn[i, :] for i in axes(Hsn, 1)]
+    mergepenalty_custom(E, t1sq, t2sq) = -E
+    idpair_loss = []
+    for id1 in 1:2, id2 in id1+1:3
+        W12, H12, loss2 = NMFMerge.mergepair(Wsn1, Hsn1, id1, id2)
+        push!(idpair_loss, ((id1, id2), loss2))
+    end
+    idpair_loss = sort(idpair_loss, by=x->x[2])
+    merge_sequence = colmerge2to1pq(Wsn, Hsn, 1)[end]
+    merge_sequence_custom = colmerge2to1pq(mergepenalty_custom, Wsn, Hsn, 1)[end]
+    @test merge_sequence[1] == idpair_loss[1][1]
+    @test merge_sequence_custom[1] == idpair_loss[3][1]
+
+end
