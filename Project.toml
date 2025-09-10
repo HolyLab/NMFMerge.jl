@@ -11,7 +11,7 @@ NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
 TSVD = "9449cd9e-2762-5aa3-a617-5413e99d722e"
 
 [compat]
-DataStructures = "0.18"
+DataStructures = "0.18, 0.19"
 ForwardDiff = "0.10"
 GsvdInitialization = "1"
 LinearAlgebra = "1"
