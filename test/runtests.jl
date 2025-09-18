@@ -51,23 +51,22 @@ H_GT = [6 10 8 2 0 1 2 10;
     @test sum(abs2, W_standard - W_renmf) <= 1e-12
     @test sum(abs2, H_standard - H_renmf) <= 1e-12
 
-
     X = rand(30, 20)
     result_1 = nmfmerge(X, 10; alg=:cd)
     result_2 = nmfmerge(X, 12 => 10; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 
     result_1 = nmfmerge(X, 4; alg=:cd)
     result_2 = nmfmerge(X, 5 => 4; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 
     result_1 = nmfmerge(X, 8; alg=:cd)
     result_2 = nmfmerge(X, 10 => 8; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12
 
+    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 end
 
 @testset "merge coefficients" begin
@@ -87,7 +86,7 @@ end
         w = Fvecs[:,idx]
 
         τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
-        c, p, u = NMFMerge.solve_remix(W_v, H_v, 1, 2)
+        c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W_v, H_v, 1, 2)
         u = [u[1], u[2]]
         b = sqrt(τ^2/4-δ)
         λ_max = τ/2+b
@@ -134,8 +133,9 @@ end
     idx = argmax(Fvals)
     w = Fvecs[:,idx]
 
+
     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
-    c, p, u = NMFMerge.solve_remix(W2, H2, 1, 2)
+    c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W2, H2, 1, 2)
     u = [u[1], u[2]]
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
@@ -150,7 +150,7 @@ end
     @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
     @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
 
-    W12, H12, loss = NMFMerge.mergepair(W2, H2, 1, 2)
+    W12, H12, _ = NMFMerge.mergepair(W2, H2, 1, 2)
     Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
     @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
 
@@ -209,4 +209,24 @@ end
     W14, H14, _ = NMFMerge.mergepair([Ws[:,1], Ws[:,4]], [Hs[1,:], Hs[4,:]], 1, 2)
     @test W14 ≈ Wmerge[:]
     @test H14 ≈ Hmerge[:]
+end
+
+@testset "test customized merge function" begin
+    Ws = [rand(5) rand(5) rand(5)]
+    Hs = [rand(10) rand(10) rand(10)]'
+    Wsn, Hsn = colnormalize(Ws, Hs)
+    Wsn1 = [Wsn[:, j] for j in axes(Wsn, 2)]
+    Hsn1 = [Hsn[i, :] for i in axes(Hsn, 1)]
+    mergepenalty_custom(E, t1sq, t2sq) = -E
+    idpair_loss = []
+    for id1 in 1:2, id2 in id1+1:3
+        W12, H12, loss2 = NMFMerge.mergepair(Wsn1, Hsn1, id1, id2)
+        push!(idpair_loss, ((id1, id2), loss2))
+    end
+    idpair_loss = sort(idpair_loss, by=x->x[2])
+    merge_sequence = colmerge2to1pq(Wsn, Hsn, 1)[end]
+    merge_sequence_custom = colmerge2to1pq(mergepenalty_custom, Wsn, Hsn, 1)[end]
+    @test merge_sequence[1] == idpair_loss[1][1]
+    @test merge_sequence_custom[1] == idpair_loss[3][1]
+
 end

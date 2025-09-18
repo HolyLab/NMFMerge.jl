@@ -8,11 +8,13 @@ export nmfmerge,
        mergecolumns
 
 """
-    result = nmfmerge(X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+    result = nmfmerge([queuepenalty], X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
 
 Performs "NMF-Merge" on data matrix `X`.
 
 Arguments:
+
+-`queuepenalty`: a function of the form `f(E, h1sq, h2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: f(E, h1sq, h2sq)=E. h1sq and h2sq are the squared norms of the corresponding rows in H.
 
 - `X::AbstractMatrix`: the data matrix to be factorized
 
@@ -35,7 +37,7 @@ Keyword arguments:
 
 Other keywords arguments are passed to `NMF.nnmf`.
 """
-function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
     n1, n2 = ncomponents
     f = tsvd(X, n2)
     Un, Sn, Vn = f
@@ -50,11 +52,13 @@ function nmfmerge(X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediat
     result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
-    Wmerge, Hmerge, _ = colmerge2to1pq(W_over_normed, H_over_normed, n2)
+    Wmerge, Hmerge, _ = colmerge2to1pq(queuepenalty, W_over_normed, H_over_normed, n2)
     result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
     return result_renmf
 end
-nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
+nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
+nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(mergepenalty, X, ncomponents; kwargs...)
+nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(mergepenalty, X, ncomponents::Integer; kwargs...)
 
 function colnormalize!(W, H, p::Integer=2)
     nonzerocolids = Int[]
@@ -79,17 +83,29 @@ Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-    Wmerge, Hmerge, mergeseq = colmerge2to1pq(W::AbstractArray, H::AbstractArray, n::Integer)
+    Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray, n::Integer)
 
 Merge components in `W` and `H` (columns in `W` and rows in `H`) until only `n`
 components remain.
+
+Arguments:
+
+-`queuepenalty`: The same as in `nmfmerge`. Default: f(E, h1sq, h2sq)=E.
+
+- `W::AbstractArray`: The basis matrix with normalized columns.
+
+- `H::AbstractArray`: The coefficient matrix.
+
+- `n::Integer`: The final number of components after merging.
+
+Outputs:
 
 `Wmerge` and `Hmerge` are the merged results with `n` components.
 
 `mergeseq` is the sequence of merge pair ids (id1, id2). Values larger than the
 number of columns in `W` indicate the output of previous merge steps.
 """
-function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
+function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Integer)
     mrgseq = Tuple{Int, Int}[]
     S = let S = S    # julia #15276
         [S[:, j] for j in axes(S, 2)]
@@ -104,7 +120,10 @@ function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
     Nt = length(S)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
     Nt >= n || throw(ArgumentError("Final solution more than original size"))
-    pq = initialize_pq_2to1(S, T)
+    pq = PriorityQueue{Tuple{Int,Int},Float64}()
+    for id0 in length(S):-1:2
+        pq = pqupdate2to1!(queuepenalty, pq, S, T, id0, 1:id0-1)
+    end
     m = Nt
     while m > n
         id0, id1 = dequeue!(pq)
@@ -113,43 +132,36 @@ function colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer)
         end
         push!(mrgseq, (id0, id1))
         S, T, id01, _ = mergecol2to1!(S, T, id0, id1);
-        pqupdate2to1!(pq, S, T, id01, 1:id01-1);
+        pqupdate2to1!(queuepenalty, pq, S, T, id01, 1:id01-1);
         m -= 1
     end
     Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
     return Smtx, Matrix(Tmtx), mrgseq
 end
+colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer) = colmerge2to1pq(mergepenalty, S, T, n)
 
-function initialize_pq_2to1(S::AbstractVector, T::AbstractVector)
-    err_pq = PriorityQueue{Tuple{Int, Int},Float64}()
-    for id0 in length(S):-1:2
-        err_pq = pqupdate2to1!(err_pq, S, T, id0, 1:id0-1)
-    end
-    return err_pq
-end
-
-function pqupdate2to1!(pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
+function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids
         if !isempty(S[id]) && !isempty(S[id01])
-            loss = solve_remix(S, T, id, id01)[2]
-            enqueue!(pq, (id, id01), loss)
+            _, loss, _, t1sq, t2sq = solve_remix(S, T, id, id01)
+            enqueue!(pq, (id, id01), queuepenalty(loss, t1sq, t2sq))
         end
     end
     return pq
 end
 
-function solve_remix(S, T, id1, id2)
+function solve_remix(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
     τ, δ, c, h1h1, h1h2, h2h2 = build_tr_det(S, T, id1, id2)
     if iszero(h1h1)
-        return c, zero(c), (zero(c), one(c))
+        return c, zero(c), (zero(c), one(c)), h1h1, h2h2
     end
     if iszero(h2h2)
-        return c, zero(c), (one(c), zero(c))
+        return c, zero(c), (one(c), zero(c)), h1h1, h2h2
     end
     if iszero(c)
         # Check whether W1 or W2 is zero
-        iszero(sum(abs2, S[id1])) && return c, zero(h1h1), (zero(c), one(c))
-        iszero(sum(abs2, S[id2])) && return c, zero(h2h2), (one(c), zero(c))
+        iszero(sum(abs2, S[id1])) && return c, zero(h1h1), (zero(c), one(c)), h1h1, h2h2
+        iszero(sum(abs2, S[id2])) && return c, zero(h2h2), (one(c), zero(c)), h1h1, h2h2
     end
     b = sqrt(τ^2/4-δ)
     λ_max = τ/2+b
@@ -161,7 +173,7 @@ function solve_remix(S, T, id1, id2)
         ξ = (h1h1-h2h2+2b)/den
         u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
     end
-    return c, λ_min, u
+    return c, λ_min, u, h1h1, h2h2
 end
 
 function build_tr_det(W::AbstractVector, H::AbstractVector, id1::Integer, id2::Integer)
@@ -184,7 +196,7 @@ function mergecol2to1!(S::AbstractVector, T::AbstractVector, id0::Integer, id1::
 end
 
 function mergepair(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
-    c, loss, u, = solve_remix(S, T, id1, id2)
+    c, loss, u, _, _ = solve_remix(S, T, id1, id2)
     S12, T12 = remix_enact(S, T, id1, id2, c, u)
     return S12, T12, loss
 end
@@ -226,5 +238,7 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
     Smtx, Tmtx = hcat(filter(x -> x != [], S)...), hcat(filter(x -> x != [], T)...)'
     return Smtx, Matrix(Tmtx), STstage, Err
 end
+
+mergepenalty(λ_min, t1sq, t2sq) = λ_min
 
 end
