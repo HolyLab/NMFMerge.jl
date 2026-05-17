@@ -1,7 +1,7 @@
 name = "NMFMerge"
 uuid = "9cc52eda-dfaf-4e21-aae3-9f26bed153a3"
 authors = ["youdongguo <1010705897@qq.com> and contributors"]
-version = "1.1.0"
+version = "1.1.1"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
@@ -11,7 +11,7 @@ NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
 TSVD = "9449cd9e-2762-5aa3-a617-5413e99d722e"
 
 [compat]
-DataStructures = "0.18, 0.19"
+DataStructures = "0.19"
 ForwardDiff = "0.10"
 GsvdInitialization = "1"
 LinearAlgebra = "1"
