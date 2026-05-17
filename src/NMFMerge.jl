@@ -126,7 +126,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
     end
     m = Nt
     while m > n
-        id0, id1 = dequeue!(pq)
+        id0, id1 = popfirst!(pq).first
         if isempty(S[id0])||isempty(S[id1])
             continue
         end
@@ -144,7 +144,7 @@ function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::Abstrac
     for id in overlapids
         if !isempty(S[id]) && !isempty(S[id01])
             _, loss, _, t1sq, t2sq = solve_remix(S, T, id, id01)
-            enqueue!(pq, (id, id01), queuepenalty(loss, t1sq, t2sq))
+            push!(pq, (id, id01) => queuepenalty(loss, t1sq, t2sq))
         end
     end
     return pq
