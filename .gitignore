@@ -6,3 +6,4 @@
 /docs/build/
 /language_wrappers/Manifest.toml
 /language_wrappers/bindinginfo_libNMFMerge.log
+build/*
