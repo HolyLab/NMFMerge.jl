@@ -92,7 +92,7 @@ Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-    Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray, n::Integer)
+    Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray, n::Integer; errstop=nothing)
 
 Merge components in `W` and `H` (columns in `W` and rows in `H`) until only `n`
 components remain.
@@ -105,7 +105,17 @@ Arguments:
 
 - `H::AbstractArray`: The coefficient matrix.
 
-- `n::Integer`: The final number of components after merging.
+- `n::Integer`: The final number of components after merging. Merging never
+  produces fewer than `n` components, so `n` acts as a floor; pass `n=1` to
+  merge as far as possible.
+
+Keyword arguments:
+
+- `errstop`: stop early once the cheapest available merge would cost more than
+  `errstop`, leaving more than `n` components. The threshold is compared against
+  the `queuepenalty` value; under the default penalty this is the merge error.
+  `nothing` (the default) disables early stopping, so merging proceeds until `n`
+  components remain.
 
 Outputs:
 
@@ -119,7 +129,7 @@ earlier merges. The accumulating `err` values let a caller merge all the way
 down (`n == 1`) and locate a "knee" at which to stop, then replay the
 corresponding prefix of `mergeseq` with [`mergecolumns`](@ref).
 """
-function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Integer)
+function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Integer; errstop=nothing)
     mrgseq = Tuple{Int, Int, Float64}[]
     S = let S = S    # julia #15276
         [S[:, j] for j in axes(S, 2)]
@@ -139,11 +149,14 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
         pq = pqupdate2to1!(queuepenalty, pq, S, T, id0, 1:id0-1)
     end
     m = Nt
-    while m > n
-        id0, id1 = popfirst!(pq).first
+    while m > n && !isempty(pq)
+        (id0, id1), penalty = first(pq)
         if isempty(S[id0])||isempty(S[id1])
+            popfirst!(pq)
             continue
         end
+        errstop !== nothing && penalty > errstop && break
+        popfirst!(pq)
         S, T, id01, loss = mergecol2to1!(S, T, id0, id1)
         push!(mrgseq, (id0, id1, loss))
         pqupdate2to1!(queuepenalty, pq, S, T, id01, 1:id01-1);
@@ -152,7 +165,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
     Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
     return Smtx, Matrix(Tmtx), mrgseq
 end
-colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer) = colmerge2to1pq(mergepenalty, S, T, n)
+colmerge2to1pq(S::AbstractArray, T::AbstractArray, n::Integer; kwargs...) = colmerge2to1pq(mergepenalty, S, T, n; kwargs...)
 
 function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids

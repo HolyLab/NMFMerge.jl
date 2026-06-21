@@ -274,3 +274,33 @@ end
         @test Hkr ≈ Hk
     end
 end
+
+@testset "errstop stopping criterion" begin
+    Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
+    ncols = size(Wn, 2)
+    _, _, schedule = colmerge2to1pq(Wn, Hn, 1)
+    errs = [s[3] for s in schedule]
+    @test issorted(errs)  # the cut tests below rely on increasing merge errors
+
+    # A threshold between two successive merge errors stops just before the
+    # costlier merge, leaving more than the floor `n` components.
+    thresh = (errs[2] + errs[3]) / 2
+    W2, _, seq2 = colmerge2to1pq(Wn, Hn, 1; errstop=thresh)
+    @test length(seq2) == 2
+    @test size(W2, 2) == ncols - 2
+
+    # A threshold below the cheapest merge performs no merges.
+    W0, _, seq0 = colmerge2to1pq(Wn, Hn, 1; errstop=errs[1] - 1)
+    @test isempty(seq0)
+    @test size(W0, 2) == ncols
+
+    # The positional `n` floor still caps merging even when errstop permits more.
+    Wf, _, seqf = colmerge2to1pq(Wn, Hn, ncols - 1; errstop=Inf)
+    @test length(seqf) == 1
+    @test size(Wf, 2) == ncols - 1
+
+    # errstop=nothing reproduces the unrestricted merge.
+    Wd, _, seqd = colmerge2to1pq(Wn, Hn, 1; errstop=nothing)
+    @test length(seqd) == length(schedule)
+    @test size(Wd, 2) == 1
+end

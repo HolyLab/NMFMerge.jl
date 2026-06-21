@@ -130,9 +130,11 @@ Other keywords arguments are passed to ``NMF.nnmf``.
 -----
 Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenents, **colmerge2to1pq** function can merge ``r`` components to ``n``components. The details of this function is:
 
-**colmerge2to1pq**(W, H, n)
+**colmerge2to1pq**(W, H, n; errstop=nothing)
 
 This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``) from original number of components to ``n`` components (``n``columns and rows left in ``W`` and ``H`` respectively).
+
+The keyword ``errstop`` stops merging early once the cheapest available merge would cost more than ``errstop`` (compared against the merge penalty), leaving more than ``n`` components; ``n`` then acts as a floor.
 
 To use this function:
 `Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merges as ``(id1, id2, err)`` tuples, where ``id1`` and ``id2`` are the merged component ids and ``err`` is the reconstruction error incurred by that merge. Merging all the way down (``n=1``) and inspecting the ``err`` values lets you locate a "knee" at which to stop, then replay the corresponding prefix of ``mergeseq`` with ``mergecolumns``.
