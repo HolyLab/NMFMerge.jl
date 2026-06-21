@@ -11,6 +11,12 @@ export nmfmerge,
        colmerge2to1pq,
        mergecolumns
 
+@static if VERSION >= v"1.11"
+    # `public` is a parse error before 1.11, so build the declaration as an
+    # `Expr` rather than writing it literally.
+    eval(Expr(:public, :ssdpenalty))
+end
+
 """
     result = nmfmerge([queuepenalty], X, ncomponents; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
 
@@ -18,7 +24,7 @@ Performs "NMF-Merge" on data matrix `X`.
 
 Arguments:
 
--`queuepenalty`: a function of the form `f(E, h1sq, h2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: f(E, h1sq, h2sq)=E. h1sq and h2sq are the squared norms of the corresponding rows in H.
+-`queuepenalty`: a function of the form `f(E, h1sq, h2sq)` that computes the penalty for merging two components, where `E` is the the merge error described in the paper, default: [`ssdpenalty`](@ref) (`f(E, h1sq, h2sq) = E`). h1sq and h2sq are the squared norms of the corresponding rows in H.
 
 - `X::AbstractMatrix`: the data matrix to be factorized
 
@@ -66,8 +72,8 @@ function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, t
     return result_renmf
 end
 nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
-nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(mergepenalty, X, ncomponents; kwargs...)
-nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(mergepenalty, X, ncomponents::Integer; kwargs...)
+nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
+nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents::Integer; kwargs...)
 
 function colnormalize!(W, H, p::Integer=2)
     nonzerocolids = Int[]
@@ -99,7 +105,7 @@ at whichever of the two criteria `nstop` and `errstop` is reached first.
 
 Arguments:
 
--`queuepenalty`: The same as in `nmfmerge`. Default: f(E, h1sq, h2sq)=E.
+-`queuepenalty`: The same as in `nmfmerge`. Default: [`ssdpenalty`](@ref) (`f(E, h1sq, h2sq) = E`).
 
 - `W::AbstractArray`: The basis matrix with normalized columns.
 
@@ -166,7 +172,7 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray;
     Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
     return Smtx, Matrix(Tmtx), mrgseq
 end
-colmerge2to1pq(S::AbstractArray, T::AbstractArray; kwargs...) = colmerge2to1pq(mergepenalty, S, T; kwargs...)
+colmerge2to1pq(S::AbstractArray, T::AbstractArray; kwargs...) = colmerge2to1pq(ssdpenalty, S, T; kwargs...)
 
 function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids
@@ -267,6 +273,16 @@ function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
     return Smtx, Matrix(Tmtx), STstage, Err
 end
 
-mergepenalty(λ_min, t1sq, t2sq) = λ_min
+"""
+    ssdpenalty(E, h1sq, h2sq)
+
+The default merge penalty: the merge error `E` itself, ignoring the squared
+norms `h1sq`, `h2sq` of the two `H` rows. With this penalty `colmerge2to1pq`
+and `nmfmerge` merge purely in order of increasing reconstruction error.
+
+Pass a custom `f(E, h1sq, h2sq)` as the leading argument to those functions to
+weight merges differently.
+"""
+ssdpenalty(E, h1sq, h2sq) = E
 
 end
