@@ -48,7 +48,12 @@ function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, t
     W_initial, H_initial = result_initial.W, result_initial.H
     kadd = n1 - n2
     kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
-    W_over_init, H_over_init = gsvdrecover(X, W_initial, H_initial, kadd, f)
+    if kadd == 0
+        # No overcomplete components to add and nothing to merge; refine the
+        # initial factorization to the final tolerance.
+        return nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=W_initial, H0=H_initial)
+    end
+    W_over_init, H_over_init, _ = gsvdrecover(X, W_initial, H_initial, kadd, f)
     result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
