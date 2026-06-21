@@ -84,6 +84,17 @@ H_GT = [6 10 8 2 0 1 2 10;
     @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
 end
 
+@testset "ncomponents accepts any integer pair" begin
+    X = rand(30, 20)
+    ref = nmfmerge(X, 12 => 10; alg=:cd)
+    for nc in (Int32(12) => Int32(10), 12 => Int32(10), Int32(12) => 10)
+        res = nmfmerge(X, nc; alg=:cd)
+        @test size(res.W, 2) == 10
+        @test res.W ≈ ref.W
+        @test res.H ≈ ref.H
+    end
+end
+
 @testset "merge coefficients" begin
     for i in 1:3, j in i+1:4
         W = W_GT[:, [i,j]]
