@@ -75,7 +75,7 @@ nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenal
 nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents::Integer; kwargs...)
 
-function colnormalize!(W, H, p::Integer=2)
+function colnormalize!(W, H, p::Real=2)
     nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
@@ -93,9 +93,11 @@ end
     Wnormalized, Hnormalized = colnormalize(W, H, p=2)
 
 Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
+`p` is the norm order passed to `LinearAlgebra.norm`, so any real order is
+accepted (e.g. `1`, `2`, `Inf`).
 
 """
-colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
+colnormalize(W, H, p::Real=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
     Wmerge, Hmerge, mergeseq = merge_pq([queuepenalty], W::AbstractArray, H::AbstractArray; nstop=1, errstop=typemax(...))

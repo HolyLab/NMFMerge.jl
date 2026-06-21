@@ -122,6 +122,19 @@ end
     end
 end
 
+@testset "colnormalize norm order" begin
+    W = rand(6, 4)
+    H = rand(4, 9)
+    for p in (1, 2, Inf)
+        Wn, Hn = colnormalize(W, H, p)
+        # Columns of W are unit-`p`-norm and the factorization is preserved.
+        for j in axes(Wn, 2)
+            @test norm(Wn[:, j], p) ≈ 1
+        end
+        @test Wn * Hn ≈ W * H
+    end
+end
+
 @testset "Single-component image" begin
     ns = 31
     nt = 100
