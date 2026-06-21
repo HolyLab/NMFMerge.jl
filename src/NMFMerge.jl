@@ -96,6 +96,10 @@ Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 `p` is the norm order passed to `LinearAlgebra.norm`, so any real order is
 accepted (e.g. `1`, `2`, `Inf`).
 
+[`merge_pq`](@ref) and [`nmfmerge`](@ref) require unit *2-norm* columns, so use
+the default `p=2` when preparing input for the merge. Other orders are available
+for unrelated normalization needs.
+
 """
 colnormalize(W, H, p::Real=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
@@ -109,7 +113,9 @@ Arguments:
 
 -`queuepenalty`: The same as in `nmfmerge`. Default: [`ssdpenalty`](@ref) (`f(E, h1sq, h2sq) = E`).
 
-- `W::AbstractArray`: The basis matrix with normalized columns.
+- `W::AbstractArray`: The basis matrix with unit 2-norm columns (e.g. from
+  [`colnormalize`](@ref) with the default `p=2`). Columns that are not 2-normalized
+  throw an `ArgumentError`.
 
 - `H::AbstractArray`: The coefficient matrix.
 
@@ -148,7 +154,7 @@ function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
     end
     for (id, w) in enumerate(W)
         wnorm = norm(w)
-        (abs(wnorm-1)<1e-12 || iszero(wnorm)) || throw(ArgumentError("W columns must be normalized, $(id)-th column norm = $(wnorm)"))
+        (abs(wnorm-1)<1e-12 || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
     end
     Nt = length(W)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
