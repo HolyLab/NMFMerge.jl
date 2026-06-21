@@ -145,8 +145,13 @@ down (`nstop == 1`) and locate a "knee" at which to stop, then replay the
 corresponding prefix of `mergeseq` with [`merge_replay`](@ref).
 """
 function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
-                  nstop::Integer=1, errstop=typemax(promote_type(eltype(W), eltype(H))))
-    mrgseq = Tuple{Int, Int, Float64}[]
+                  nstop::Integer=1, errstop=typemax(float(promote_type(eltype(W), eltype(H)))))
+    # Merge errors are floating-point combinations of the W and H entries.
+    T = float(promote_type(eltype(W), eltype(H)))
+    # Tolerance for the unit-2-norm check, scaled to the precision of W so that
+    # e.g. Float32-normalized columns (norm error ~ eps(Float32)) are accepted.
+    normtol = sqrt(eps(float(real(eltype(W)))))
+    mrgseq = Tuple{Int, Int, T}[]
     W = let W = W    # julia #15276
         [W[:, j] for j in axes(W, 2)]
     end
@@ -155,7 +160,7 @@ function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
     end
     for (id, w) in enumerate(W)
         wnorm = norm(w)
-        (abs(wnorm-1)<1e-12 || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
+        (abs(wnorm-1)<normtol || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
     end
     Nt = length(W)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
