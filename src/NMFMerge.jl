@@ -8,7 +8,7 @@ using TSVD: TSVD, tsvd
 
 export nmfmerge,
        colnormalize,
-       colmerge2to1pq,
+       merge_pq,
        mergecolumns
 
 @static if VERSION >= v"1.11"
@@ -67,7 +67,7 @@ function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, t
     result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
-    Wmerge, Hmerge, _ = colmerge2to1pq(queuepenalty, W_over_normed, H_over_normed; nstop=n2)
+    Wmerge, Hmerge, _ = merge_pq(queuepenalty, W_over_normed, H_over_normed; nstop=n2)
     result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
     return result_renmf
 end
@@ -98,7 +98,7 @@ Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
-    Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray; nstop=1, errstop=typemax(...))
+    Wmerge, Hmerge, mergeseq = merge_pq([queuepenalty], W::AbstractArray, H::AbstractArray; nstop=1, errstop=typemax(...))
 
 Merge components in `W` and `H` (columns in `W` and rows in `H`). Merging stops
 at whichever of the two criteria `nstop` and `errstop` is reached first.
@@ -135,44 +135,44 @@ earlier merges. The accumulating `err` values let a caller merge all the way
 down (`nstop == 1`) and locate a "knee" at which to stop, then replay the
 corresponding prefix of `mergeseq` with [`mergecolumns`](@ref).
 """
-function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray;
-                        nstop::Integer=1, errstop=typemax(promote_type(eltype(S), eltype(T))))
+function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
+                  nstop::Integer=1, errstop=typemax(promote_type(eltype(W), eltype(H))))
     mrgseq = Tuple{Int, Int, Float64}[]
-    S = let S = S    # julia #15276
-        [S[:, j] for j in axes(S, 2)]
+    W = let W = W    # julia #15276
+        [W[:, j] for j in axes(W, 2)]
     end
-    T = let T = T
-        [T[i, :] for i in axes(T, 1)]
+    H = let H = H
+        [H[i, :] for i in axes(H, 1)]
     end
-    for (id, s) in enumerate(S)
-        snorm = norm(s)
-        (abs(snorm-1)<1e-12 || iszero(snorm)) || throw(ArgumentError("W columns must be normalized, $(id)-th column norm = $(snorm)"))
+    for (id, w) in enumerate(W)
+        wnorm = norm(w)
+        (abs(wnorm-1)<1e-12 || iszero(wnorm)) || throw(ArgumentError("W columns must be normalized, $(id)-th column norm = $(wnorm)"))
     end
-    Nt = length(S)
+    Nt = length(W)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
     Nt >= nstop || throw(ArgumentError("Final solution more than original size"))
     pq = PriorityQueue{Tuple{Int,Int},Float64}()
-    for id0 in length(S):-1:2
-        pq = pqupdate2to1!(queuepenalty, pq, S, T, id0, 1:id0-1)
+    for id0 in length(W):-1:2
+        pq = pqupdate2to1!(queuepenalty, pq, W, H, id0, 1:id0-1)
     end
     m = Nt
     while m > nstop && !isempty(pq)
         (id0, id1), penalty = first(pq)
-        if isempty(S[id0])||isempty(S[id1])
+        if isempty(W[id0])||isempty(W[id1])
             popfirst!(pq)
             continue
         end
         penalty > errstop && break
         popfirst!(pq)
-        S, T, id01, loss = mergecol2to1!(S, T, id0, id1)
+        W, H, id01, loss = mergecol2to1!(W, H, id0, id1)
         push!(mrgseq, (id0, id1, loss))
-        pqupdate2to1!(queuepenalty, pq, S, T, id01, 1:id01-1);
+        pqupdate2to1!(queuepenalty, pq, W, H, id01, 1:id01-1);
         m -= 1
     end
-    Smtx, Tmtx = reduce(hcat, filter(!isempty, S)), reduce(hcat, filter(!isempty, T))'
-    return Smtx, Matrix(Tmtx), mrgseq
+    Wmtx, Hmtx = reduce(hcat, filter(!isempty, W)), reduce(hcat, filter(!isempty, H))'
+    return Wmtx, Matrix(Hmtx), mrgseq
 end
-colmerge2to1pq(S::AbstractArray, T::AbstractArray; kwargs...) = colmerge2to1pq(ssdpenalty, S, T; kwargs...)
+merge_pq(W::AbstractArray, H::AbstractArray; kwargs...) = merge_pq(ssdpenalty, W, H; kwargs...)
 
 function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
     for id in overlapids
@@ -277,7 +277,7 @@ end
     ssdpenalty(E, h1sq, h2sq)
 
 The default merge penalty: the merge error `E` itself, ignoring the squared
-norms `h1sq`, `h2sq` of the two `H` rows. With this penalty `colmerge2to1pq`
+norms `h1sq`, `h2sq` of the two `H` rows. With this penalty `merge_pq`
 and `nmfmerge` merge purely in order of increasing reconstruction error.
 
 Pass a custom `f(E, h1sq, h2sq)` as the leading argument to those functions to
