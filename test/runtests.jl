@@ -2,6 +2,7 @@ using NMFMerge, NMF, LinearAlgebra, DataStructures, ForwardDiff
 using Test
 using Aqua
 using ExplicitImports
+using OffsetArrays
 
 @testset "Aqua" begin
     Aqua.test_all(NMFMerge)
@@ -309,9 +310,9 @@ end
 @testset "merge_pq error eltype follows factors" begin
     W = rand(6, 4); H = rand(4, 9)
     for Tf in (Float64, Float32)
-        Wn, Hn = colnormalize(Tf.(W), Tf.(H))
+        Wn, Hn = @inferred colnormalize(Tf.(W), Tf.(H))
         @test eltype(Wn) === Tf
-        Wm, Hm, seq = merge_pq(Wn, Hn; nstop=1)
+        Wm, Hm, seq = @inferred merge_pq(Wn, Hn; nstop=1)
         @test eltype(Wm) === Tf
         @test eltype(seq) === Tuple{Int,Int,Tf}
     end
@@ -345,4 +346,68 @@ end
     Wd, _, seqd = merge_pq(Wn, Hn; nstop=1)
     @test length(seqd) == length(schedule)
     @test size(Wd, 2) == 1
+end
+
+@testset "generic axes" begin
+    Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
+
+    # The component axis (columns of `W`, rows of `H`) is enumeration and must be
+    # one-based, but the feature axis (rows of `W`) and sample axis (columns of
+    # `H`) may be offset and are carried through to the output. Offset only those
+    # two; the merged component axis comes out one-based.
+    Wo = OffsetArray(collect(Wn), -2, 0)    # feature shift -2, component one-based
+    Ho = OffsetArray(collect(Hn), 0, -1)    # component one-based, sample shift -1
+    vals(A) = collect(A)[:]                 # values in column-major order, axes discarded
+
+    @testset "colnormalize" begin
+        rW, rH = @inferred colnormalize(Wn, Hn)
+        oW, oH = @inferred colnormalize(Wo, Ho)
+        @test vals(oW) == vals(rW) && vals(oH) == vals(rH)
+        @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
+        @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
+        vW, vH = @inferred colnormalize(view(Wn, :, :), view(Hn, :, :))
+        @test vW == rW && vH == rH
+    end
+
+    @testset "merge_pq" begin
+        rW, rH, rseq = @inferred merge_pq(Wn, Hn; nstop=2)
+        oW, oH, oseq = @inferred merge_pq(Wo, Ho; nstop=2)
+        @test vals(oW) == vals(rW) && vals(oH) == vals(rH) && oseq == rseq
+        @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
+        @test axes(oW, 2) == 1:2                # components re-enumerated, one-based
+        @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
+        vW, vH, vseq = @inferred merge_pq(view(Wn, :, :), view(Hn, :, :); nstop=2)
+        @test vW == rW && vH == rH && vseq == rseq
+    end
+
+    @testset "merge_replay" begin
+        _, _, seq = merge_pq(Wn, Hn; nstop=1)
+        rW, rH = @inferred merge_replay(Wn, Hn, seq)
+        oW, oH = @inferred merge_replay(Wo, Ho, seq)
+        @test vals(oW) == vals(rW) && vals(oH) == vals(rH)
+        @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
+        @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
+        vW, vH = @inferred merge_replay(view(Wn, :, :), view(Hn, :, :), seq)
+        @test vW == rW && vH == rH
+    end
+
+    @testset "mismatched component dimension" begin
+        @test_throws DimensionMismatch colnormalize(rand(6, 4), rand(3, 9))
+        @test_throws DimensionMismatch merge_pq(rand(6, 4), rand(3, 9); nstop=2)
+        @test_throws DimensionMismatch merge_replay(rand(6, 4), rand(3, 9), [(1, 2)])
+    end
+
+    @testset "non-one-based component axis rejected" begin
+        Wc = OffsetArray(collect(Wn), 0, -3)    # component axis shifted off one
+        Hc = OffsetArray(collect(Hn), -3, 0)
+        @test_throws "one-based" colnormalize(Wc, Hc)
+        @test_throws "one-based" merge_pq(Wc, Hc; nstop=2)
+        @test_throws "one-based" merge_replay(Wc, Hc, [(1, 2)])
+    end
+
+    @testset "nmfmerge rejects offset input" begin
+        # `nmfmerge` delegates to TSVD/NMF, which require one-based indexing.
+        X = OffsetArray(rand(20, 15), -2, -3)
+        @test_throws "offset arrays are not supported" nmfmerge(X, 4; alg=:cd)
+    end
 end

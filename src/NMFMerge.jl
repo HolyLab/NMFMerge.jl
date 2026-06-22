@@ -77,6 +77,7 @@ nmfmerge(X, ncomponents::Pair{<:Integer,<:Integer}; kwargs...) = nmfmerge(ssdpen
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
 
 function colnormalize!(W, H, p::Real=2)
+    check_component_axis(W, H)
     nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
@@ -100,6 +101,9 @@ accepted (e.g. `1`, `2`, `Inf`).
 [`merge_pq`](@ref) and [`nmfmerge`](@ref) require unit *2-norm* columns, so use
 the default `p=2` when preparing input for the merge. Other orders are available
 for unrelated normalization needs.
+
+The component axis (columns of `W`, rows of `H`) must be one-based; the feature
+axis (rows of `W`) and sample axis (columns of `H`) may have any axes.
 
 """
 colnormalize(W, H, p::Real=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
@@ -131,6 +135,11 @@ Keyword arguments:
 
 The defaults on these keywords allow merging all the way down to a single component.
 
+The component axis (columns of `W`, rows of `H`) is enumeration and must be
+one-based. The feature axis (rows of `W`) and sample axis (columns of `H`) may
+have any axes and are carried through to the output; the merged component axis
+is one-based.
+
 Outputs:
 
 `Wmerge` and `Hmerge` are the merged results; the number of surviving components
@@ -146,51 +155,63 @@ corresponding prefix of `mergeseq` with [`merge_replay`](@ref).
 """
 function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
                   nstop::Integer=1, errstop=typemax(float(promote_type(eltype(W), eltype(H)))))
+    check_component_axis(W, H)
     # Merge errors are floating-point combinations of the W and H entries.
     T = float(promote_type(eltype(W), eltype(H)))
     # Tolerance for the unit-2-norm check, scaled to the precision of W so that
     # e.g. Float32-normalized columns (norm error ~ eps(Float32)) are accepted.
     normtol = sqrt(eps(float(real(eltype(W)))))
     mrgseq = Tuple{Int, Int, T}[]
-    W = let W = W    # julia #15276
-        [W[:, j] for j in axes(W, 2)]
-    end
-    H = let H = H
-        [H[i, :] for i in axes(H, 1)]
-    end
-    for (id, w) in enumerate(W)
+    # One-based stack of component columns (of `W`) and rows (of `H`); each merge
+    # appends a new component. The feature axis (rows of `W`) and sample axis
+    # (columns of `H`) ride along on these vectors and reappear in the output.
+    # The component axis is one-based (checked above), so `1:size` enumerates it.
+    Wcols = [W[:, j] for j in 1:size(W, 2)]
+    Hrows = [H[i, :] for i in 1:size(H, 1)]
+    for (id, w) in enumerate(Wcols)
         wnorm = norm(w)
         (abs(wnorm-1)<normtol || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
     end
-    Nt = length(W)
+    Nt = length(Wcols)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
     Nt >= nstop || throw(ArgumentError("Final solution more than original size"))
+    # Merging marks components dead rather than deleting them, keeping ids stable.
+    alive = trues(Nt)
     pq = PriorityQueue{Tuple{Int,Int},Float64}()
-    for id0 in length(W):-1:2
-        pq = pqupdate2to1!(queuepenalty, pq, W, H, id0, 1:id0-1)
+    for id0 in Nt:-1:2
+        pq = pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id0, 1:id0-1)
     end
     m = Nt
     while m > nstop && !isempty(pq)
         (id0, id1), penalty = first(pq)
-        if isempty(W[id0])||isempty(W[id1])
+        if !alive[id0] || !alive[id1]
             popfirst!(pq)
             continue
         end
         penalty > errstop && break
         popfirst!(pq)
-        W, H, id01, loss = mergecol2to1!(W, H, id0, id1)
+        id01, loss = mergecol2to1!(Wcols, Hrows, alive, id0, id1)
         push!(mrgseq, (id0, id1, loss))
-        pqupdate2to1!(queuepenalty, pq, W, H, id01, 1:id01-1);
+        pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id01, 1:id01-1)
         m -= 1
     end
-    Wmtx, Hmtx = reduce(hcat, filter(!isempty, W)), reduce(hcat, filter(!isempty, H))'
-    return Wmtx, Matrix(Hmtx), mrgseq
+    return stack(Wcols[alive]), stack(Hrows[alive]; dims=1), mrgseq
 end
 merge_pq(W::AbstractArray, H::AbstractArray; kwargs...) = merge_pq(ssdpenalty, W, H; kwargs...)
 
-function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, id01::Integer, overlapids::AbstractRange{To}) where To
+# The component axis (columns of `W`, rows of `H`) is plain enumeration, so it
+# must be shared and one-based; the feature axis (rows of `W`) and sample axis
+# (columns of `H`) may carry any axes.
+function check_component_axis(W, H)
+    axes(W, 2) == axes(H, 1) || throw(DimensionMismatch("W has $(size(W, 2)) components but H has $(size(H, 1))"))
+    isone(first(axes(W, 2))) || throw(ArgumentError("the component axis (columns of `W`, rows of `H`) must be one-based"))
+    return nothing
+end
+
+function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, alive::AbstractVector{Bool}, id01::Integer, overlapids::AbstractRange{To}) where To
+    alive[id01] || return pq
     for id in overlapids
-        if !isempty(S[id]) && !isempty(S[id01])
+        if alive[id]
             _, loss, _, t1sq, t2sq = solve_remix(S, T, id, id01)
             push!(pq, (id, id01) => queuepenalty(loss, t1sq, t2sq))
         end
@@ -234,13 +255,13 @@ function build_tr_det(W::AbstractVector, H::AbstractVector, id1::Integer, id2::I
     return τ, δ, c, h1h1, h1h2, h2h2
 end
 
-function mergecol2to1!(S::AbstractVector, T::AbstractVector, id0::Integer, id1::Integer)
+function mergecol2to1!(S::AbstractVector, T::AbstractVector, alive::AbstractVector{Bool}, id0::Integer, id1::Integer)
     S01, T01, loss = mergepair(S, T, id0, id1)
-    S[id0] = S[id1] = T[id0] = T[id1] = eltype(S[1])[]
-    id01 = length(S)+1
+    alive[id0] = alive[id1] = false
     push!(S, S01)
     push!(T, T01)
-    return S, T, id01, loss
+    push!(alive, true)
+    return length(S), loss
 end
 
 function mergepair(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
@@ -249,12 +270,9 @@ function mergepair(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Inte
     return S12, T12, loss
 end
 
-function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2::Integer, c::AbstractFloat, w::Tuple{Tw, Tw}) where {Tw, TS}
-    S12 = zeros(eltype(TS), length(S[id1]))
-    S12 += w[1]*S[id1]
-    S12 += w[2]*S[id2]
-    T1, T2 = (w[1]+w[2]*c)*T[id1], (w[1]*c+w[2])*T[id2]
-    T12 = T1+T2
+function remix_enact(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer, c, w)
+    S12 = w[1] .* S[id1] .+ w[2] .* S[id2]
+    T12 = (w[1]+w[2]*c) .* T[id1] .+ (w[1]*c+w[2]) .* T[id2]
     return S12, T12
 end
 
@@ -269,16 +287,21 @@ further fields are ignored, so the `(id1, id2, err)` triples returned by
 [`merge_pq`](@ref) can be replayed directly. Replaying a prefix of a `merge_pq`
 schedule reproduces the factors `merge_pq` would have returned had it stopped at
 the corresponding number of components.
+
+As in [`merge_pq`](@ref), the component axis must be one-based while the feature
+and sample axes are carried through to the output.
 """
 function merge_replay(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArray)
-    W = [W[:, j] for j in axes(W, 2)]
-    H = [H[i, :] for i in axes(H, 1)]
+    check_component_axis(W, H)
+    # One-based component stack carrying the feature/sample axes (see `merge_pq`).
+    Wcols = [W[:, j] for j in 1:size(W, 2)]
+    Hrows = [H[i, :] for i in 1:size(H, 1)]
+    alive = trues(length(Wcols))
     for mergeids in mergeseq
         id0, id1 = mergeids
-        W, H, _, _ = mergecol2to1!(W, H, id0, id1)
+        mergecol2to1!(Wcols, Hrows, alive, id0, id1)
     end
-    Wmtx, Hmtx = reduce(hcat, filter(!isempty, W)), reduce(hcat, filter(!isempty, H))'
-    return Wmtx, Matrix(Hmtx)
+    return stack(Wcols[alive]), stack(Hrows[alive]; dims=1)
 end
 
 """
