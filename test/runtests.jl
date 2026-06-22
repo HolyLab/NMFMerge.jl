@@ -197,6 +197,22 @@ end
 
 end
 
+@testset "solve_remix degenerate den" begin
+    # Orthogonal W columns (c=0) and orthogonal H rows (h1h2=0) make
+    # den = (h1h2 + c*h2h2)*2 vanish; u then selects the larger-norm component.
+    W = [[1.0, 0.0], [0.0, 1.0]]
+
+    # h1h1 = 1 < h2h2 = 4  =>  keep component 2
+    c, λ, u, h1h1, h2h2 = NMFMerge.solve_remix(W, [[1.0, 0.0], [0.0, 2.0]], 1, 2)
+    @test u == (0.0, 1.0)
+    @test h1h1 == 1.0 && h2h2 == 4.0
+
+    # h1h1 = 4 >= h2h2 = 1  =>  keep component 1
+    c, λ, u, h1h1, h2h2 = NMFMerge.solve_remix(W, [[2.0, 0.0], [0.0, 1.0]], 1, 2)
+    @test u == (1.0, 0.0)
+    @test h1h1 == 4.0 && h2h2 == 1.0
+end
+
 @testset "Merge by min err" begin
     # Two cells, one is bright and the other dim. The bright cell is split into two tiles that alternate time points
     S1 = [0.1, 0.5, 0.4, 0.0, 0.0, 0.0]; S1 = S1 / norm(S1);
