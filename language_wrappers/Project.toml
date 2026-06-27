@@ -1,0 +1,8 @@
+[deps]
+GsvdInitialization = "2ac24108-be9c-42b8-8d78-6a4f62a87e7d"
+NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
+NMFMerge = "9cc52eda-dfaf-4e21-aae3-9f26bed153a3"
+NonNegLeastSquares = "b7351bd1-99d9-5c5d-8786-f205a815c4d7"
+
+[sources]
+NMFMerge = {path = ".."}

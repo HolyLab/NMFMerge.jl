@@ -37,33 +37,34 @@ Keyword arguments:
 
 Other keywords arguments are passed to `NMF.nnmf`.
 """
-function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; alg::Symbol=:greedycd, tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
     n1, n2 = ncomponents
     f = tsvd(X, n2)
     Un, Sn, Vn = f
     if W0 === nothing || H0 === nothing
         W0, H0 = NMF.nndsvd(X, n2, initdata=(U = Un, S = Sn, V = Vn))
     end
-    result_initial = nnmf(X, n2; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
+    result_initial = nnmf(X, n2; alg, kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
     W_initial, H_initial = result_initial.W, result_initial.H
     kadd = n1 - n2
     kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
     W_over_init, H_over_init = gsvdrecover(X, W_initial, H_initial, kadd, f)
-    result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
+    result_over = nnmf(X, n1; alg, kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
     Wmerge, Hmerge, _ = colmerge2to1pq(queuepenalty, W_over_normed, H_over_normed, n2)
-    result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
+    result_renmf = nnmf(X, n2; alg, kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
     return result_renmf
 end
 nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
 nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(mergepenalty, X, ncomponents; kwargs...)
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(mergepenalty, X, ncomponents::Integer; kwargs...)
 
-function colnormalize!(W, H, p::Integer=2)
+@inline function colnormalize!(W, H, p::Integer=2)
+    Base.@constprop :aggressive
     nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
-        normw = norm(w, p)
+        normw = @inline norm(w, p)
         if !iszero(normw)
             W[:, j] = w/normw
             H[j, :] = H[j, :]*normw
@@ -80,7 +81,8 @@ end
 Normalize the factorization so that each column satisfies `||W[:, i]||_p ≈ 1`.
 
 """
-colnormalize(W, H, p::Integer=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
+@inline Base.@constprop :aggressive colnormalize(W, H, p::Integer) = colnormalize!(float(copy(W)), float(copy(H)), p)
+@noinline colnormalize(W, H) = colnormalize(W, H, 2)
 
 """
     Wmerge, Hmerge, mergeseq = colmerge2to1pq([queuepenalty], W::AbstractArray, H::AbstractArray, n::Integer)
