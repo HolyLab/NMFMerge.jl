@@ -3,6 +3,13 @@ using Test
 using Aqua
 using ExplicitImports
 using OffsetArrays
+using Documenter
+
+DocMeta.setdocmeta!(NMFMerge, :DocTestSetup, :(using NMFMerge); recursive=true)
+
+@testset "Doctests" begin
+    doctest(NMFMerge; manual=false)
+end
 
 @testset "Aqua" begin
     Aqua.test_all(NMFMerge)
