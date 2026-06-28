@@ -312,7 +312,10 @@ function solve_remix(S::AbstractVector, T::AbstractVector, id1::Integer, id2::In
         iszero(sum(abs2, S[id1])) && return c, zero(h1h1), (zero(c), one(c)), h1h1, h2h2
         iszero(sum(abs2, S[id2])) && return c, zero(h2h2), (one(c), zero(c)), h1h1, h2h2
     end
-    b = sqrt(τ^2/4-δ)
+    # τ/2 ± b are the eigenvalues of a symmetric pencil, so the discriminant
+    # τ^2/4 - δ is nonnegative in exact arithmetic; clamp roundoff that pushes it
+    # slightly below zero (otherwise `sqrt` throws on near-degenerate pairs).
+    b = sqrt(max(zero(δ), τ^2/4-δ))
     λ_max = τ/2+b
     λ_min = δ/λ_max
     den = (h1h2+c*h2h2)*2
