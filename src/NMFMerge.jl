@@ -271,7 +271,7 @@ function merge_replay(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
         id0, id1 = mergeids
         W, H, _, _ = mergecol2to1!(W, H, id0, id1)
     end
-    Wmtx, Hmtx = hcat(filter(!isempty, W)...), hcat(filter(!isempty, H)...)'
+    Wmtx, Hmtx = reduce(hcat, filter(!isempty, W)), reduce(hcat, filter(!isempty, H))'
     return Wmtx, Matrix(Hmtx)
 end
 
