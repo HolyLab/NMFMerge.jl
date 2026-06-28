@@ -286,6 +286,15 @@ end
     end
 end
 
+@testset "merge_pq requires unit 2-norm columns" begin
+    # Columns normalized in a norm other than 2 are rejected, and the message
+    # points at the 2-norm requirement.
+    W = rand(6, 4)
+    H = rand(4, 9)
+    W1, H1 = colnormalize(W, H, 1)   # unit 1-norm, not unit 2-norm
+    @test_throws "unit 2-norm" merge_pq(W1, H1; nstop=2)
+end
+
 @testset "errstop stopping criterion" begin
     Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
     ncols = size(Wn, 2)
