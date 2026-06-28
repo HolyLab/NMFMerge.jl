@@ -220,6 +220,27 @@ end
     @test h1h1 == 4.0 && h2h2 == 1.0
 end
 
+@testset "solve_remix discriminant clamp" begin
+    # τ/2 ± sqrt(τ^2/4-δ) are eigenvalues of a symmetric pencil, so the
+    # discriminant is nonnegative in exact arithmetic. Orthonormal W columns
+    # (c=0) and disjoint H rows (h1h2=0) with equal squared norms make it vanish;
+    # roundoff then pushes it slightly negative, and solve_remix must clamp
+    # rather than call sqrt on a negative number.
+    S = [[1.0, 0.0], [0.0, 1.0]]
+    T = [[3.0, 4.0, 0.0, 0.0, 0.0], [0.0, 0.0, 5/3, 10/3, 10/3]]  # ‖T1‖² = ‖T2‖² = 25
+    τ, δ, _, _, _, _ = NMFMerge.build_tr_det(S, T, 1, 2)
+    @test τ^2/4 - δ < 0                       # the negative discriminant this guards against
+    c, λ, u, h1h1, h2h2 = NMFMerge.solve_remix(S, T, 1, 2)
+    @test isfinite(λ) && all(isfinite, u)
+    @test λ ≈ 25                              # degenerate pencil: both eigenvalues equal
+
+    # The same degeneracy reached through the public merge entry point.
+    W = [1.0 0.0; 0.0 1.0; 0.0 0.0; 0.0 0.0; 0.0 0.0]
+    H = [3.0 4.0 0.0 0.0 0.0; 0.0 0.0 5/3 10/3 10/3]
+    Wm, Hm, seq = merge_pq(W, H; nstop=1)
+    @test size(Wm, 2) == 1
+end
+
 @testset "Merge by min err" begin
     # Two cells, one is bright and the other dim. The bright cell is split into two tiles that alternate time points
     S1 = [0.1, 0.5, 0.4, 0.0, 0.0, 0.0]; S1 = S1 / norm(S1);
