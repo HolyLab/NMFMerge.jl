@@ -11,6 +11,7 @@ NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
 TSVD = "9449cd9e-2762-5aa3-a617-5413e99d722e"
 
 [compat]
+Aqua = "0.8"
 DataStructures = "0.19"
 ForwardDiff = "0.10"
 GsvdInitialization = "2"
@@ -21,9 +22,10 @@ Test = "1"
 julia = "1.10"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["ForwardDiff", "NMF", "Test"]
+test = ["Aqua", "ForwardDiff", "NMF", "Test"]

@@ -1,5 +1,10 @@
 using NMFMerge, NMF, LinearAlgebra, DataStructures, ForwardDiff
 using Test
+using Aqua
+
+@testset "Aqua" begin
+    Aqua.test_all(NMFMerge)
+end
 
 function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
     c = S[id1]'*S[id2]

@@ -4,6 +4,7 @@
 <!-- [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://HolyLab.github.io/NMFMerge.jl/dev/) -->
 [![Build Status](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/HolyLab/NMFMerge.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/HolyLab/NMFMerge.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/HolyLab/NMFMerge.jl)
+[![Aqua QA](https://juliatesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 This package implements the technique in the paper [An optimal pairwise merge algorithm improves the quality and consistency of nonnegative matrix factorization](https://ieeexplore.ieee.org/abstract/document/11071940). It is used to project Non-negative matrix factorization(NMF) solutions from a high-dimensional space to lower dimensional space by optimally and sequentially merging NMF component pairs.
 
