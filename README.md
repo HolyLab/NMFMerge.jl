@@ -61,13 +61,6 @@ sequence.
 See the [documentation](https://HolyLab.github.io/NMFMerge.jl/stable/) for a
 full worked example, the lower-level workflow, and the complete API reference.
 
-The comparison between standard NMF (HALS) and NMFMerge on a known rank-4 ground
-truth:
-![Sample Figure](images/simulation.png)
-
-NMFMerge (brown) fits the ground truth (green) more closely than standard NMF
-(magenta): at 44 of 64 points, the NMFMerge result is closer to the ground truth.
-
 ## Citation
 
 Thanks for citing this work! See the "Cite this repository" link in the "About"
