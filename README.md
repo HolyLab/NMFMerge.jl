@@ -128,14 +128,18 @@ If one of ``W0`` and ``H0`` is ``nothing``, NNDSVD is used for initialization.
 Other keywords arguments are passed to ``NMF.nnmf``.
 
 -----
-Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenents, **colmerge2to1pq** function can merge ``r`` components to ``n``components. The details of this function is:
+Suppose you have the NMF solution ``W`` and ``H`` with ``r`` componenents, **colmerge2to1pq** function can merge ``r`` components down. The details of this function is:
 
-**colmerge2to1pq**(W, H, n)
+**colmerge2to1pq**(W, H; nstop=1, errstop=typemax(...))
 
-This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``) from original number of components to ``n`` components (``n``columns and rows left in ``W`` and ``H`` respectively).
+This function merges components in ``W`` and ``H`` (columns in ``W`` and rows in ``H``). Merging stops at whichever of the two criteria ``nstop`` and ``errstop`` is reached first.
+
+The keyword ``nstop`` is a floor on the number of components: merging never produces fewer than ``nstop`` components. The default ``nstop=1`` merges as far as possible.
+
+The keyword ``errstop`` stops merging early once the cheapest available merge would cost more than ``errstop`` (compared against the merge penalty), leaving more than ``nstop`` components. Its default disables early stopping.
 
 To use this function:
-`Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H, n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merges as ``(id1, id2, err)`` tuples, where ``id1`` and ``id2`` are the merged component ids and ``err`` is the reconstruction error incurred by that merge. Merging all the way down (``n=1``) and inspecting the ``err`` values lets you locate a "knee" at which to stop, then replay the corresponding prefix of ``mergeseq`` with ``mergecolumns``.
+`Wmerge, Hmerge, mergeseq = colmerge2to1pq(W, H; nstop=n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merges as ``(id1, id2, err)`` tuples, where ``id1`` and ``id2`` are the merged component ids and ``err`` is the reconstruction error incurred by that merge. Merging all the way down (``nstop=1``) and inspecting the ``err`` values lets you locate a "knee" at which to stop, then replay the corresponding prefix of ``mergeseq`` with ``mergecolumns``.
 
 -----
 
