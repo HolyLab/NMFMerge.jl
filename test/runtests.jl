@@ -1,9 +1,19 @@
 using NMFMerge, NMF, LinearAlgebra, DataStructures, ForwardDiff
 using Test
 using Aqua
+using ExplicitImports
 
 @testset "Aqua" begin
     Aqua.test_all(NMFMerge)
+end
+
+@testset "ExplicitImports" begin
+    # nndsvd is accessed as NMF.nndsvd; it is not public in NMF, but NMF
+    # provides no public NNDSVD entry point, so the access is unavoidable.
+    test_explicit_imports(NMFMerge;
+                          all_explicit_imports_are_public   = VERSION >= v"1.11",
+                          all_qualified_accesses_are_public = VERSION >= v"1.11",
+                          ignore = (:nndsvd,))
 end
 
 function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)

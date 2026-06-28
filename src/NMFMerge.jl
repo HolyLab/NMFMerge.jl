@@ -1,6 +1,10 @@
 module NMFMerge
 
-using LinearAlgebra, DataStructures, NMF, GsvdInitialization, TSVD
+using LinearAlgebra: LinearAlgebra, norm
+using DataStructures: DataStructures, PriorityQueue
+using NMF: NMF, nnmf
+using GsvdInitialization: GsvdInitialization, gsvdrecover
+using TSVD: TSVD, tsvd
 
 export nmfmerge,
        colnormalize,
