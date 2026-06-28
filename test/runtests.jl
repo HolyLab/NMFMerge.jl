@@ -257,10 +257,8 @@ end
     errs = [s[3] for s in schedule]
     @test all(>=(0), errs)
 
-    # Replaying the full schedule reproduces the final factors and the same
-    # per-merge errors that merge_pq reported.
-    Wr, Hr, _, Err = mergecolumns(Wn, Hn, schedule)
-    @test Err ≈ errs
+    # Replaying the full schedule reproduces the final factors.
+    Wr, Hr = merge_replay(Wn, Hn, schedule)
     @test Wr ≈ Wfull
     @test Hr ≈ Hfull
 
@@ -268,7 +266,7 @@ end
     # merges of the full schedule.
     for k in 1:ncols-1
         Wk, Hk, _ = merge_pq(Wn, Hn; nstop=k)
-        Wkr, Hkr, _, _ = mergecolumns(Wn, Hn, schedule[1:ncols-k])
+        Wkr, Hkr = merge_replay(Wn, Hn, schedule[1:ncols-k])
         @test size(Wkr, 2) == k
         @test Wkr ≈ Wk
         @test Hkr ≈ Hk

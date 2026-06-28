@@ -9,7 +9,7 @@ using TSVD: TSVD, tsvd
 export nmfmerge,
        colnormalize,
        merge_pq,
-       mergecolumns
+       merge_replay
 
 @static if VERSION >= v"1.11"
     # `public` is a parse error before 1.11, so build the declaration as an
@@ -133,7 +133,7 @@ they were performed. `id1` and `id2` are the ids of the merged components and
 Ids larger than the number of columns in `W` refer to components produced by
 earlier merges. The accumulating `err` values let a caller merge all the way
 down (`nstop == 1`) and locate a "knee" at which to stop, then replay the
-corresponding prefix of `mergeseq` with [`mergecolumns`](@ref).
+corresponding prefix of `mergeseq` with [`merge_replay`](@ref).
 """
 function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
                   nstop::Integer=1, errstop=typemax(promote_type(eltype(W), eltype(H))))
@@ -245,32 +245,26 @@ function remix_enact(S::AbstractVector{TS}, T::AbstractVector, id1::Integer, id2
 end
 
 """
-    Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge=false)
+    Wmerge, Hmerge = merge_replay(W, H, mergeseq)
 
-Merge components in `W` and `H` (columns in `W` and rows in `H`) according to the sequence of merge pair ids `mergeseq`.
+Merge components in `W` and `H` (columns in `W` and rows in `H`) by replaying the
+sequence of merge-pair ids in `mergeseq`, returning the merged factors.
 
-`Wmerge` and `Hmerge` are the merged results.
-
-`WHstage::Vector{Tuple{Matrix, Matrix}}` includes the results of each merge stage. `WHstage` is empty if `tracemerge=false`.
-
-`Err::Vector` includes merge penalty of each merge stage.
+Each entry of `mergeseq` supplies the pair of ids `(id1, id2)` to merge; any
+further fields are ignored, so the `(id1, id2, err)` triples returned by
+[`merge_pq`](@ref) can be replayed directly. Replaying a prefix of a `merge_pq`
+schedule reproduces the factors `merge_pq` would have returned had it stopped at
+the corresponding number of components.
 """
-function mergecolumns(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArray; tracemerge::Bool = false)
-    Err = Float64[]
-    S = [W[:, j] for j in axes(W, 2)]
-    T = [H[i, :] for i in axes(H, 1)]
-    STstage = []
+function merge_replay(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArray)
+    W = [W[:, j] for j in axes(W, 2)]
+    H = [H[i, :] for i in axes(H, 1)]
     for mergeids in mergeseq
         id0, id1 = mergeids
-        if tracemerge
-            push!(STstage, (copy(S), copy(T)))
-        end
-        S, T, _, loss = mergecol2to1!(S, T, id0, id1)
-        err = loss
-        push!(Err, err)
+        W, H, _, _ = mergecol2to1!(W, H, id0, id1)
     end
-    Smtx, Tmtx = hcat(filter(x -> x != [], S)...), hcat(filter(x -> x != [], T)...)'
-    return Smtx, Matrix(Tmtx), STstage, Err
+    Wmtx, Hmtx = hcat(filter(!isempty, W)...), hcat(filter(!isempty, H)...)'
+    return Wmtx, Matrix(Hmtx)
 end
 
 """

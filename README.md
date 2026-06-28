@@ -139,7 +139,7 @@ The keyword ``nstop`` is a floor on the number of components: merging never prod
 The keyword ``errstop`` stops merging early once the cheapest available merge would cost more than ``errstop`` (compared against the merge penalty), leaving more than ``nstop`` components. Its default disables early stopping.
 
 To use this function:
-`Wmerge, Hmerge, mergeseq = merge_pq(W, H; nstop=n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merges as ``(id1, id2, err)`` tuples, where ``id1`` and ``id2`` are the merged component ids and ``err`` is the reconstruction error incurred by that merge. Merging all the way down (``nstop=1``) and inspecting the ``err`` values lets you locate a "knee" at which to stop, then replay the corresponding prefix of ``mergeseq`` with ``mergecolumns``.
+`Wmerge, Hmerge, mergeseq = merge_pq(W, H; nstop=n)`, where ``Wmerge`` and ``Hmerge`` are the merged results with ``n`` components. ``mergeseq`` is the sequence of merges as ``(id1, id2, err)`` tuples, where ``id1`` and ``id2`` are the merged component ids and ``err`` is the reconstruction error incurred by that merge. Merging all the way down (``nstop=1``) and inspecting the ``err`` values lets you locate a "knee" at which to stop, then replay the corresponding prefix of ``mergeseq`` with ``merge_replay``.
 
 -----
 
@@ -159,13 +159,11 @@ To use this function:
 
 If you already have a merge sequence and want to merge from ``size(W, 2)`` components to ``n`` components, you can use the function:
 
-**mergecolumns**(W, H, mergeseq; tracemerge)
-
-keyword argurment ``tracemerge``: save ``Wmerge`` and ``Hmerge`` at each merge stage if ``tracemerge=true``. default ``tracemerge=false``.
+**merge_replay**(W, H, mergeseq)
 
 To use this function:
 
-`Wmerge, Hmerge, WHstage, Err = mergecolumns(W, H, mergeseq; tracemerge)`, where ``Wmerge`` and ``Hmerge`` are the merged results. ``WHstage::Vector{Tuple{Matrix, Matrix}}`` includes the results of each merge stage. ``WHstage=[]`` if ``tracemerge=false``. ``Err::Vector`` includes merge penalty of each merge stage.
+`Wmerge, Hmerge = merge_replay(W, H, mergeseq)`, where ``Wmerge`` and ``Hmerge`` are the merged results. Each entry of ``mergeseq`` supplies the pair of ids ``(id1, id2)`` to merge; any further fields are ignored, so the ``(id1, id2, err)`` triples returned by ``merge_pq`` can be replayed directly.
 
 ## Citation
 Thanks for citing this work! See the "Cite this repository" link in the "About" bar for format options.
