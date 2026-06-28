@@ -1,0 +1,12 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+GsvdInitialization = "2ac24108-be9c-42b8-8d78-6a4f62a87e7d"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
+NMFMerge = "9cc52eda-dfaf-4e21-aae3-9f26bed153a3"
+
+[compat]
+Documenter = "1"
+GsvdInitialization = "2"
+LinearAlgebra = "1"
+NMF = "1"
