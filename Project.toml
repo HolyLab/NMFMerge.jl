@@ -1,7 +1,7 @@
 name = "NMFMerge"
 uuid = "9cc52eda-dfaf-4e21-aae3-9f26bed153a3"
-authors = ["youdongguo <1010705897@qq.com> and contributors"]
 version = "1.1.1"
+authors = ["youdongguo <1010705897@qq.com> and contributors"]
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
@@ -18,6 +18,7 @@ ForwardDiff = "0.10"
 GsvdInitialization = "2"
 LinearAlgebra = "1"
 NMF = "1"
+OffsetArrays = "1"
 TSVD = "0.4"
 Test = "1"
 julia = "1.10"
@@ -27,7 +28,8 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 NMF = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "ExplicitImports", "ForwardDiff", "NMF", "Test"]
+test = ["Aqua", "ExplicitImports", "ForwardDiff", "NMF", "OffsetArrays", "Test"]
