@@ -71,9 +71,10 @@ function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, t
     result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
     return result_renmf
 end
+nmfmerge(queuepenalty, X, ncomponents::Pair{<:Integer,<:Integer}; kwargs...) = nmfmerge(queuepenalty, X, Int(ncomponents.first) => Int(ncomponents.second); kwargs...)
 nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
-nmfmerge(X, ncomponents::Pair{Int,Int}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
-nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents::Integer; kwargs...)
+nmfmerge(X, ncomponents::Pair{<:Integer,<:Integer}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
+nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
 
 function colnormalize!(W, H, p::Real=2)
     nonzerocolids = Int[]
