@@ -375,6 +375,12 @@ end
     Wo = OffsetArray(collect(Wn), -2, 0)    # feature shift -2, component one-based
     Ho = OffsetArray(collect(Hn), 0, -1)    # component one-based, sample shift -1
     vals(A) = collect(A)[:]                 # values in column-major order, axes discarded
+    seqids(seq) = [(id0, id1) for (id0, id1, _) in seq]   # merge pairs, dropping the loss
+
+    # Factor entries are compared with `≈`: offset/view inputs route the dot-product
+    # reductions in `merge_pq` through generic (non-BLAS) accumulation, so results
+    # can differ from the contiguous path in the last ULP. The merge pairs are
+    # discrete and compared exactly.
 
     @testset "colnormalize" begin
         rW, rH = @inferred colnormalize(Wn, Hn)
@@ -389,23 +395,23 @@ end
     @testset "merge_pq" begin
         rW, rH, rseq = @inferred merge_pq(Wn, Hn; nstop=2)
         oW, oH, oseq = @inferred merge_pq(Wo, Ho; nstop=2)
-        @test vals(oW) == vals(rW) && vals(oH) == vals(rH) && oseq == rseq
+        @test vals(oW) ≈ vals(rW) && vals(oH) ≈ vals(rH) && seqids(oseq) == seqids(rseq)
         @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
         @test axes(oW, 2) == 1:2                # components re-enumerated, one-based
         @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
         vW, vH, vseq = @inferred merge_pq(view(Wn, :, :), view(Hn, :, :); nstop=2)
-        @test vW == rW && vH == rH && vseq == rseq
+        @test vW ≈ rW && vH ≈ rH && seqids(vseq) == seqids(rseq)
     end
 
     @testset "merge_replay" begin
         _, _, seq = merge_pq(Wn, Hn; nstop=1)
         rW, rH = @inferred merge_replay(Wn, Hn, seq)
         oW, oH = @inferred merge_replay(Wo, Ho, seq)
-        @test vals(oW) == vals(rW) && vals(oH) == vals(rH)
+        @test vals(oW) ≈ vals(rW) && vals(oH) ≈ vals(rH)
         @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
         @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
         vW, vH = @inferred merge_replay(view(Wn, :, :), view(Hn, :, :), seq)
-        @test vW == rW && vH == rH
+        @test vW ≈ rW && vH ≈ rH
     end
 
     @testset "mismatched component dimension" begin
