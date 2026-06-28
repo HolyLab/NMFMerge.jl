@@ -306,6 +306,17 @@ end
     @test_throws "unit 2-norm" merge_pq(W1, H1; nstop=2)
 end
 
+@testset "merge_pq error eltype follows factors" begin
+    W = rand(6, 4); H = rand(4, 9)
+    for Tf in (Float64, Float32)
+        Wn, Hn = colnormalize(Tf.(W), Tf.(H))
+        @test eltype(Wn) === Tf
+        Wm, Hm, seq = merge_pq(Wn, Hn; nstop=1)
+        @test eltype(Wm) === Tf
+        @test eltype(seq) === Tuple{Int,Int,Tf}
+    end
+end
+
 @testset "errstop stopping criterion" begin
     Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
     ncols = size(Wn, 2)
