@@ -190,7 +190,7 @@ end
     Wn, Hn = colnormalize(W, H)
     @test sum(abs2, W*H - Wn*Hn) < 1e-16
 
-    Wm, Hm, mergids = colmerge2to1pq(copy(Wn), copy(Hn), 2)
+    Wm, Hm, mergids = colmerge2to1pq(copy(Wn), copy(Hn); nstop=2)
     Wn1 = [Wn[:, j] for j in axes(Wn, 2)];
     Hn1 = [Hn[i, :] for i in axes(Hn, 1)];
     Ids = [(1,2), (1,3), (2,3)]
@@ -218,7 +218,7 @@ end
     wrand1 ./= norm(wrand1)
     Ws = [wrand zeros(5) wrand wrand1]
     Hs = [rand(10) rand(10) zeros(10) rand(10)]'
-    Wmerge, Hmerge, _ = colmerge2to1pq(Ws, Hs, 1)
+    Wmerge, Hmerge, _ = colmerge2to1pq(Ws, Hs; nstop=1)
     @test size(Wmerge, 2) == 1
 
     W14, H14, _ = NMFMerge.mergepair([Ws[:,1], Ws[:,4]], [Hs[1,:], Hs[4,:]], 1, 2)
@@ -239,8 +239,8 @@ end
         push!(idpair_loss, ((id1, id2), loss2))
     end
     idpair_loss = sort(idpair_loss, by=x->x[2])
-    merge_sequence = colmerge2to1pq(Wsn, Hsn, 1)[end]
-    merge_sequence_custom = colmerge2to1pq(mergepenalty_custom, Wsn, Hsn, 1)[end]
+    merge_sequence = colmerge2to1pq(Wsn, Hsn; nstop=1)[end]
+    merge_sequence_custom = colmerge2to1pq(mergepenalty_custom, Wsn, Hsn; nstop=1)[end]
     @test merge_sequence[1][1:2] == idpair_loss[1][1]
     @test merge_sequence_custom[1][1:2] == idpair_loss[3][1]
 
@@ -251,7 +251,7 @@ end
     ncols = size(Wn, 2)
 
     # Merge all the way down to a single component, recording every merge error.
-    Wfull, Hfull, schedule = colmerge2to1pq(Wn, Hn, 1)
+    Wfull, Hfull, schedule = colmerge2to1pq(Wn, Hn; nstop=1)
     @test size(Wfull, 2) == 1
     @test length(schedule) == ncols - 1
     errs = [s[3] for s in schedule]
@@ -267,7 +267,7 @@ end
     # Knee: stopping the merge at rank k equals replaying the first ncols-k
     # merges of the full schedule.
     for k in 1:ncols-1
-        Wk, Hk, _ = colmerge2to1pq(Wn, Hn, k)
+        Wk, Hk, _ = colmerge2to1pq(Wn, Hn; nstop=k)
         Wkr, Hkr, _, _ = mergecolumns(Wn, Hn, schedule[1:ncols-k])
         @test size(Wkr, 2) == k
         @test Wkr ≈ Wk
@@ -278,29 +278,29 @@ end
 @testset "errstop stopping criterion" begin
     Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
     ncols = size(Wn, 2)
-    _, _, schedule = colmerge2to1pq(Wn, Hn, 1)
+    _, _, schedule = colmerge2to1pq(Wn, Hn; nstop=1)
     errs = [s[3] for s in schedule]
     @test issorted(errs)  # the cut tests below rely on increasing merge errors
 
     # A threshold between two successive merge errors stops just before the
-    # costlier merge, leaving more than the floor `n` components.
+    # costlier merge, leaving more than the `nstop` floor of components.
     thresh = (errs[2] + errs[3]) / 2
-    W2, _, seq2 = colmerge2to1pq(Wn, Hn, 1; errstop=thresh)
+    W2, _, seq2 = colmerge2to1pq(Wn, Hn; nstop=1, errstop=thresh)
     @test length(seq2) == 2
     @test size(W2, 2) == ncols - 2
 
     # A threshold below the cheapest merge performs no merges.
-    W0, _, seq0 = colmerge2to1pq(Wn, Hn, 1; errstop=errs[1] - 1)
+    W0, _, seq0 = colmerge2to1pq(Wn, Hn; nstop=1, errstop=errs[1] - 1)
     @test isempty(seq0)
     @test size(W0, 2) == ncols
 
-    # The positional `n` floor still caps merging even when errstop permits more.
-    Wf, _, seqf = colmerge2to1pq(Wn, Hn, ncols - 1; errstop=Inf)
+    # The `nstop` floor still caps merging even when errstop permits more.
+    Wf, _, seqf = colmerge2to1pq(Wn, Hn; nstop=ncols - 1, errstop=Inf)
     @test length(seqf) == 1
     @test size(Wf, 2) == ncols - 1
 
-    # errstop=nothing reproduces the unrestricted merge.
-    Wd, _, seqd = colmerge2to1pq(Wn, Hn, 1; errstop=nothing)
+    # The default errstop reproduces the unrestricted merge.
+    Wd, _, seqd = colmerge2to1pq(Wn, Hn; nstop=1)
     @test length(seqd) == length(schedule)
     @test size(Wd, 2) == 1
 end
