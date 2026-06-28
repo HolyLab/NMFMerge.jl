@@ -199,8 +199,8 @@ end
     loss3 = NMFMerge.mergepair(Wn1, Hn1, Ids[3][1], Ids[3][2])[end]
     i = findmin([loss1, loss2, loss3])[2]
 
-    @test pop!(copy(mergids)) == Ids[i]
-    @test pop!(mergids) == (1,2)
+    @test pop!(copy(mergids))[1:2] == Ids[i]
+    @test pop!(mergids)[1:2] == (1,2)
 
 end
 
@@ -241,7 +241,36 @@ end
     idpair_loss = sort(idpair_loss, by=x->x[2])
     merge_sequence = colmerge2to1pq(Wsn, Hsn, 1)[end]
     merge_sequence_custom = colmerge2to1pq(mergepenalty_custom, Wsn, Hsn, 1)[end]
-    @test merge_sequence[1] == idpair_loss[1][1]
-    @test merge_sequence_custom[1] == idpair_loss[3][1]
+    @test merge_sequence[1][1:2] == idpair_loss[1][1]
+    @test merge_sequence_custom[1][1:2] == idpair_loss[3][1]
 
+end
+
+@testset "Knee-finding workflow" begin
+    Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
+    ncols = size(Wn, 2)
+
+    # Merge all the way down to a single component, recording every merge error.
+    Wfull, Hfull, schedule = colmerge2to1pq(Wn, Hn, 1)
+    @test size(Wfull, 2) == 1
+    @test length(schedule) == ncols - 1
+    errs = [s[3] for s in schedule]
+    @test all(>=(0), errs)
+
+    # Replaying the full schedule reproduces the final factors and the same
+    # per-merge errors that colmerge2to1pq reported.
+    Wr, Hr, _, Err = mergecolumns(Wn, Hn, schedule)
+    @test Err ≈ errs
+    @test Wr ≈ Wfull
+    @test Hr ≈ Hfull
+
+    # Knee: stopping the merge at rank k equals replaying the first ncols-k
+    # merges of the full schedule.
+    for k in 1:ncols-1
+        Wk, Hk, _ = colmerge2to1pq(Wn, Hn, k)
+        Wkr, Hkr, _, _ = mergecolumns(Wn, Hn, schedule[1:ncols-k])
+        @test size(Wkr, 2) == k
+        @test Wkr ≈ Wk
+        @test Hkr ≈ Hk
+    end
 end

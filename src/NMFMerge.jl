@@ -111,11 +111,16 @@ Outputs:
 
 `Wmerge` and `Hmerge` are the merged results with `n` components.
 
-`mergeseq` is the sequence of merge pair ids (id1, id2). Values larger than the
-number of columns in `W` indicate the output of previous merge steps.
+`mergeseq` is the sequence of merges as `(id1, id2, err)` tuples, in the order
+they were performed. `id1` and `id2` are the ids of the merged components and
+`err` is the reconstruction error (the merge penalty) incurred by that merge.
+Ids larger than the number of columns in `W` refer to components produced by
+earlier merges. The accumulating `err` values let a caller merge all the way
+down (`n == 1`) and locate a "knee" at which to stop, then replay the
+corresponding prefix of `mergeseq` with [`mergecolumns`](@ref).
 """
 function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Integer)
-    mrgseq = Tuple{Int, Int}[]
+    mrgseq = Tuple{Int, Int, Float64}[]
     S = let S = S    # julia #15276
         [S[:, j] for j in axes(S, 2)]
     end
@@ -139,8 +144,8 @@ function colmerge2to1pq(queuepenalty, S::AbstractArray, T::AbstractArray, n::Int
         if isempty(S[id0])||isempty(S[id1])
             continue
         end
-        push!(mrgseq, (id0, id1))
-        S, T, id01, _ = mergecol2to1!(S, T, id0, id1);
+        S, T, id01, loss = mergecol2to1!(S, T, id0, id1)
+        push!(mrgseq, (id0, id1, loss))
         pqupdate2to1!(queuepenalty, pq, S, T, id01, 1:id01-1);
         m -= 1
     end
