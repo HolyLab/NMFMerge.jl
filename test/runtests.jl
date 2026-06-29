@@ -39,6 +39,29 @@ function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integ
     return Q1, Q2, c, τ1τ1, τ1τ2, τ2τ2
 end
 
+# Certify (W, H) as a strict local minimum of ‖X - WH‖² over the nonnegative
+# orthant, modulo NMF's k-dimensional column-scaling invariance. Returns the KKT
+# residuals and the reduced-Hessian spectrum (finite-differenced from the
+# analytic gradient on the free, i.e. strictly-positive, coordinates).
+function certify_localmin(X, W, H; ztol=1e-8)
+    m, k = size(W); n = size(H, 2)
+    pack(A, B) = vcat(vec(A), vec(B))
+    unpack(p) = (reshape(p[1:m*k], m, k), reshape(p[m*k+1:end], k, n))
+    function grad(p)
+        Wp, Hp = unpack(p); R = Wp*Hp .- X
+        vcat(vec(2 .* R*Hp'), vec(2 .* (Wp'*R)))
+    end
+    p0 = pack(W, H); g0 = grad(p0); free = pack(W .> ztol, H .> ztol) .> 0
+    fc = findall(free); nf = length(fc); He = zeros(nf, nf); h = 1e-6
+    for (a, i) in enumerate(fc)
+        pp = copy(p0); pp[i] += h; pm = copy(p0); pm[i] -= h
+        He[:, a] = (grad(pp)[fc] .- grad(pm)[fc]) ./ (2h)
+    end
+    ev = sort(eigvals((He + He') / 2)); nz = count(<(1e-6), abs.(ev))
+    return (; res = norm(X .- W*H), kkt_free = maximum(abs.(g0[free])),
+            kkt_active = minimum(g0[.!free]), n_zero_eig = nz, next_eig = ev[nz+1])
+end
+
 W_GT = [6 0 4 9;
      0 4 8 3;
      4 4 0 7;
@@ -461,4 +484,34 @@ end
         X = OffsetArray(rand(20, 15), -2, -3)
         @test_throws "offset arrays are not supported" nmfmerge(X, 4; alg=:cd)
     end
+end
+
+@testset "multiple minima and merge escape" begin
+    # A 4×8 rank-3 matrix whose exact factorization gives reconstruction error 0,
+    # yet rank-3 NMF has a spurious local minimum that traps standard solvers.
+    X = float.([0 4 0 2 0 4 2 2;
+                2 2 2 1 4 4 1 1;
+                2 6 4 6 4 4 4 2;
+                2 1 3 2 4 1 1 0])
+    @test rank(X) == 3
+
+    # Standard NMF from NNDSVD converges to a strictly suboptimal point.
+    hals = nnmf(X, 3; init=:nndsvd, alg=:cd, initdata=svd(X), maxiter=10^6, tol=1e-12)
+    @test norm(X - hals.W * hals.H) > 0.1
+
+    # That point is a genuine strict local minimum (modulo column scaling), not
+    # slow convergence: KKT holds with strictly positive dual variables, and the
+    # reduced Hessian is positive definite off the k=3 scaling directions.
+    cert = certify_localmin(X, hals.W, hals.H)
+    @test cert.kkt_free < 1e-5         # stationary on the positive entries
+    @test cert.kkt_active > 0          # dual feasible on the active (zero) entries
+    @test cert.n_zero_eig == 3         # nullspace is exactly the scaling invariance
+    @test cert.next_eig > 1e-3         # positive definite on its complement
+
+    # Over-factoring to 4 components and merging back to 3 recovers the exact
+    # factorization. A tight tol_final also tightens the overcomplete fit
+    # (tol_intermediate defaults to sqrt(tol_final)), which must be converged
+    # enough for the merge to separate the components.
+    mg = nmfmerge(X, 4 => 3; alg=:cd, maxiter=10^6, tol_final=1e-10)
+    @test norm(X - mg.W * mg.H) < 1e-6
 end

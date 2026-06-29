@@ -44,51 +44,70 @@ package mode and run:
 pkg> add NMFMerge
 ```
 
-## Quick start
+## Quick start: escaping a local minimum
 
-Start from a known rank-4 ground truth and form the data matrix ``X = WH``:
+Take a small nonnegative matrix that is exactly rank 3, so it has an *exact*
+rank-3 factorization with zero reconstruction error:
 
 ```julia
-using NMFMerge, NMF, GsvdInitialization, LinearAlgebra
+using NMFMerge, NMF, LinearAlgebra
 
-W = [6 0 4 9; 0 4 8 3; 4 4 0 7; 9 1 1 1; 0 3 0 4; 8 1 4 0; 0 0 4 2; 0 9 5 5]
-H = [6 10 8 2 0 1 2 10;
-     0 10 2 9 10 6 0 0;
-     3 5 0 2 4 0 0 8;
-     4 9 10 7 7 0 0 0]
-X = W * H
+X = [0 4 0 2 0 4 2 2;
+     2 2 2 1 4 4 1 1;
+     2 6 4 6 4 4 4 2;
+     2 1 3 2 4 1 1 0]
 ```
 
-Standard NMF (HALS) with NNDSVD initialization gives one reconstruction error:
+Even so, rank-3 NMF has a spurious local minimum, and standard NMF (HALS) with
+NNDSVD initialization converges to it:
 
 ```julia
-julia> f = svd(X);
+julia> f = svd(float(X));
 
-julia> result_hals = nnmf(float(X), 4; init=:nndsvd, alg=:cd, initdata=f, maxiter=10^6, tol=1e-4);
+julia> result_hals = nnmf(float(X), 3; init=:nndsvd, alg=:cd, initdata=f, maxiter=10^6, tol=1e-8);
 
 julia> result_hals.objvalue / sum(abs2, X)     # relative fitting error
-0.00019519131697246967
+0.0007391570365682461
 ```
 
-NMF-Merge — factorize with 5 components, then merge down to 4 — reaches a better
-local minimum:
+This is not slow convergence. The point is a genuine *strict* local minimum: its
+KKT conditions hold and its reduced Hessian is positive definite away from the
+trivial column-scaling directions, so further iteration cannot escape it.
+
+NMF-Merge factorizes with one extra component and merges back to three, reaching
+the global optimum — the exact factorization:
 
 ```julia
-julia> result_merge = nmfmerge(float(X), 5 => 4; alg=:cd, maxiter=10^6);
+julia> result_merge = nmfmerge(float(X), 4 => 3; alg=:cd, maxiter=10^6, tol_final=1e-10);
 
-julia> result_merge.objvalue / sum(abs2, X)
-0.00010318497977267728
+julia> result_merge.objvalue / sum(abs2, X)    # ≈ machine precision: exact recovery
+7.5e-16
 ```
 
-The relative fitting error of NMF-Merge is about half that of standard NMF, so
-NMF-Merge helps NMF converge to a better solution. (The merge step draws on a
-randomized truncated SVD, so the exact value varies slightly from run to run.)
+Standard NMF is stuck with a relative fitting error near ``7 \times 10^{-4}``,
+while NMF-Merge recovers the factorization to machine precision. The merge step draws
+on a randomized truncated SVD, so the exact value varies slightly from run to
+run.
 
-![Standard NMF versus NMF-Merge](assets/simulation.png)
+The two solutions are not small perturbations of each other; they are
+structurally different factorizations. Matching the components for maximum
+overlap (the factorization is invariant to reordering) and unit-normalizing the
+columns of ``W``, two of the three components nearly coincide but the third is
+badly mismatched:
 
-The figure shows that NMF-Merge (brown) fits the ground truth (green) more
-closely than standard NMF (magenta): at 44 of 64 points, the NMF-Merge result is
-closer to the ground truth.
+```
+component   HALS (error 0.63)     optimal merge (error ≈ 0)   cosine
+    1       0.72 0.47 0.51 0.00   0.67 0.33 0.67 0.00          0.98
+    2       0.16 0.00 0.94 0.30   0.00 0.00 0.89 0.45          0.98
+    3       0.00 0.57 0.57 0.59   0.00 0.89 0.00 0.45          0.77
+```
+
+Each block lists one component's loadings on the four features. Standard NMF
+smears feature 3 across components 2 and 3, while the optimal solution keeps it
+in component 2 alone; the rows of ``H`` differ in the same way. No reordering or
+rescaling reconciles the two — standard NMF has converged to a genuinely
+different, worse description of the data, and merging from an over-complete fit
+escapes it.
 
 ## Lower-level workflow
 
