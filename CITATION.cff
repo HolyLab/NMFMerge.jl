@@ -44,3 +44,18 @@ abstract: >-
   saddle points. This can be recommended as a preferred
   approach for most applications of NMF.
 license: MIT
+preferred-citation:
+  type: article
+  title: >-
+    An optimal pairwise merge algorithm improves the quality
+    and consistency of nonnegative matrix factorization
+  authors:
+    - given-names: Youdong
+      family-names: Guo
+      orcid: 'https://orcid.org/0009-0007-7787-3722'
+    - given-names: Timothy E.
+      family-names: Holy
+      orcid: 'https://orcid.org/0000-0002-2429-1071'
+  journal: IEEE Transactions on Signal Processing
+  year: 2025
+  doi: 10.1109/TSP.2025.3585893
