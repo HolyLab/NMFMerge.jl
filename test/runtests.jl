@@ -5,10 +5,10 @@ using ExplicitImports
 using OffsetArrays
 using Documenter
 
-DocMeta.setdocmeta!(NMFMerge, :DocTestSetup, :(using NMFMerge); recursive=true)
+DocMeta.setdocmeta!(NMFMerge, :DocTestSetup, :(using NMFMerge); recursive = true)
 
 @testset "Doctests" begin
-    doctest(NMFMerge; manual=false)
+    doctest(NMFMerge; manual = false)
 end
 
 @testset "Aqua" begin
@@ -18,20 +18,22 @@ end
 @testset "ExplicitImports" begin
     # nndsvd is accessed as NMF.nndsvd; it is not public in NMF, but NMF
     # provides no public NNDSVD entry point, so the access is unavoidable.
-    test_explicit_imports(NMFMerge;
-                          all_explicit_imports_are_public   = VERSION >= v"1.11",
-                          all_qualified_accesses_are_public = VERSION >= v"1.11",
-                          ignore = (:nndsvd,))
+    test_explicit_imports(
+        NMFMerge;
+        all_explicit_imports_are_public = VERSION >= v"1.11",
+        all_qualified_accesses_are_public = VERSION >= v"1.11",
+        ignore = (:nndsvd,)
+    )
 end
 
 function build_Qs(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer)
-    c = S[id1]'*S[id2]
-    τ1τ1 = T[id1]'*T[id1]
-    τ1τ2 = T[id1]'*T[id2]
-    τ2τ2 = T[id2]'*T[id2]
-    q1 = τ1τ1 + 2*c*τ1τ2 + c^2*τ2τ2
-    q12 = c*τ1τ1 + (1+c^2)*τ1τ2 + c*τ2τ2
-    q2 = c^2*τ1τ1 + 2*c*τ1τ2 + τ2τ2
+    c = S[id1]' * S[id2]
+    τ1τ1 = T[id1]' * T[id1]
+    τ1τ2 = T[id1]' * T[id2]
+    τ2τ2 = T[id2]' * T[id2]
+    q1 = τ1τ1 + 2 * c * τ1τ2 + c^2 * τ2τ2
+    q12 = c * τ1τ1 + (1 + c^2) * τ1τ2 + c * τ2τ2
+    q2 = c^2 * τ1τ1 + 2 * c * τ1τ2 + τ2τ2
     Q1 = [q1 q12; q12 q2]
     s1s1 = 1
     s2s2 = 1
@@ -43,76 +45,80 @@ end
 # orthant, modulo NMF's k-dimensional column-scaling invariance. Returns the KKT
 # residuals and the reduced-Hessian spectrum (finite-differenced from the
 # analytic gradient on the free, i.e. strictly-positive, coordinates).
-function certify_localmin(X, W, H; ztol=1e-8)
+function certify_localmin(X, W, H; ztol = 1.0e-8)
     m, k = size(W); n = size(H, 2)
     pack(A, B) = vcat(vec(A), vec(B))
-    unpack(p) = (reshape(p[1:m*k], m, k), reshape(p[m*k+1:end], k, n))
+    unpack(p) = (reshape(p[1:(m * k)], m, k), reshape(p[(m * k + 1):end], k, n))
     function grad(p)
-        Wp, Hp = unpack(p); R = Wp*Hp .- X
-        vcat(vec(2 .* R*Hp'), vec(2 .* (Wp'*R)))
+        Wp, Hp = unpack(p); R = Wp * Hp .- X
+        return vcat(vec(2 .* R * Hp'), vec(2 .* (Wp' * R)))
     end
     p0 = pack(W, H); g0 = grad(p0); free = pack(W .> ztol, H .> ztol) .> 0
-    fc = findall(free); nf = length(fc); He = zeros(nf, nf); h = 1e-6
+    fc = findall(free); nf = length(fc); He = zeros(nf, nf); h = 1.0e-6
     for (a, i) in enumerate(fc)
         pp = copy(p0); pp[i] += h; pm = copy(p0); pm[i] -= h
         He[:, a] = (grad(pp)[fc] .- grad(pm)[fc]) ./ (2h)
     end
-    ev = sort(eigvals((He + He') / 2)); nz = count(<(1e-6), abs.(ev))
-    return (; res = norm(X .- W*H), kkt_free = maximum(abs.(g0[free])),
-            kkt_active = minimum(g0[.!free]), n_zero_eig = nz, next_eig = ev[nz+1])
+    ev = sort(eigvals((He + He') / 2)); nz = count(<(1.0e-6), abs.(ev))
+    return (;
+        res = norm(X .- W * H), kkt_free = maximum(abs.(g0[free])),
+        kkt_active = minimum(g0[.!free]), n_zero_eig = nz, next_eig = ev[nz + 1],
+    )
 end
 
-W_GT = [6 0 4 9;
-     0 4 8 3;
-     4 4 0 7;
-     9 1 1 1;
-     0 3 0 4;
-     8 1 4 0;
-     0 0 4 2;
-     0 9 5 5
-    ]
+W_GT = [
+    6 0 4 9;
+    0 4 8 3;
+    4 4 0 7;
+    9 1 1 1;
+    0 3 0 4;
+    8 1 4 0;
+    0 0 4 2;
+    0 9 5 5
+]
 
-H_GT = [6 10 8 2 0 1 2 10;
-     0 10 2 9 10 6 0 0;
-     3 5 0 2 4 0 0 8;
-     4 9 10 7 7 0 0 0
-    ]
+H_GT = [
+    6 10 8 2 0 1 2 10;
+    0 10 2 9 10 6 0 0;
+    3 5 0 2 4 0 0 8;
+    4 9 10 7 7 0 0 0
+]
 
 @testset "test top wrapper" begin
     W = W_GT[:, 3:4]
     H = H_GT[3:4, :]
-    X = W*H
-    result_renmf = nmfmerge(float(X), 3=>2; alg = :cd, maxiter = 10^5, tol_final=1e-12, tol_intermediate = 1e-12);
+    X = W * H
+    result_renmf = nmfmerge(float(X), 3 => 2; alg = :cd, maxiter = 10^5, tol_final = 1.0e-12, tol_intermediate = 1.0e-12)
     W_renmf, H_renmf = result_renmf.W, result_renmf.H
     @test size(W_renmf, 2) == 2
     @test size(H_renmf, 1) == 2
-    @test sum(abs2, X - W_renmf*H_renmf) <= 1e-12
+    @test sum(abs2, X - W_renmf * H_renmf) <= 1.0e-12
 
-    standard_nmf = nnmf(float(X), 2; init=:nndsvd, tol=1e-12, initdata=svd(float(X)))
-    result_renmf = nmfmerge(float(X), 2=>2; alg=:cd, maxiter=10^5, tol_final=1e-12, tol_intermediate=1e-12)
+    standard_nmf = nnmf(float(X), 2; init = :nndsvd, tol = 1.0e-12, initdata = svd(float(X)))
+    result_renmf = nmfmerge(float(X), 2 => 2; alg = :cd, maxiter = 10^5, tol_final = 1.0e-12, tol_intermediate = 1.0e-12)
     W_standard, H_standard = standard_nmf.W, standard_nmf.H
     W_renmf, H_renmf = result_renmf.W, result_renmf.H
     W_standard, H_standard = colnormalize(W_standard, H_standard)
     W_renmf, H_renmf = colnormalize(W_renmf, H_renmf)
-    @test sum(abs2, W_standard - W_renmf) <= 1e-12
-    @test sum(abs2, H_standard - H_renmf) <= 1e-12
+    @test sum(abs2, W_standard - W_renmf) <= 1.0e-12
+    @test sum(abs2, H_standard - H_renmf) <= 1.0e-12
 
     X = rand(30, 20)
-    result_1 = nmfmerge(X, 10; alg=:cd)
-    result_2 = nmfmerge(X, 12 => 10; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
+    result_1 = nmfmerge(X, 10; alg = :cd)
+    result_2 = nmfmerge(X, 12 => 10; alg = :cd)
+    @test sum(abs2, result_1.W - result_2.W) <= 1.0e-12 * sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1.0e-12 * sum(abs2, result_1.H)
 
-    result_1 = nmfmerge(X, 4; alg=:cd)
-    result_2 = nmfmerge(X, 5 => 4; alg=:cd)
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
+    result_1 = nmfmerge(X, 4; alg = :cd)
+    result_2 = nmfmerge(X, 5 => 4; alg = :cd)
+    @test sum(abs2, result_1.W - result_2.W) <= 1.0e-12 * sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1.0e-12 * sum(abs2, result_1.H)
 
-    result_1 = nmfmerge(X, 8; alg=:cd)
-    result_2 = nmfmerge(X, 10 => 8; alg=:cd)
+    result_1 = nmfmerge(X, 8; alg = :cd)
+    result_2 = nmfmerge(X, 10 => 8; alg = :cd)
 
-    @test sum(abs2, result_1.W - result_2.W) <= 1e-12*sum(abs2, result_1.W)
-    @test sum(abs2, result_1.H - result_2.H) <= 1e-12*sum(abs2, result_1.H)
+    @test sum(abs2, result_1.W - result_2.W) <= 1.0e-12 * sum(abs2, result_1.W)
+    @test sum(abs2, result_1.H - result_2.H) <= 1.0e-12 * sum(abs2, result_1.H)
 end
 
 @testset "ncomponents accepts any integer pair" begin
@@ -121,47 +127,47 @@ end
     # result is exercised elsewhere. Asserting equality across separate solves
     # would instead test bit-reproducibility of multithreaded BLAS.
     for nc in (Int32(12) => Int32(10), 12 => Int32(10), Int32(12) => 10)
-        res = nmfmerge(X, nc; alg=:cd)
+        res = nmfmerge(X, nc; alg = :cd)
         @test size(res.W, 2) == 10
         @test size(res.H, 1) == 10
     end
 end
 
 @testset "merge coefficients" begin
-    for i in 1:3, j in i+1:4
-        W = W_GT[:, [i,j]]
-        H = H_GT[[i,j], :]
+    for i in 1:3, j in (i + 1):4
+        W = W_GT[:, [i, j]]
+        H = H_GT[[i, j], :]
         Wn, Hn = colnormalize(W, H)
         W_v = [Wn[:, j] for j in axes(Wn, 2)]
         H_v = [Hn[i, :] for i in axes(Hn, 1)]
 
-        Q1, Q2, _, _, _, _ =build_Qs(W_v, H_v, 1, 2)
+        Q1, Q2, _, _, _, _ = build_Qs(W_v, H_v, 1, 2)
         @test issymmetric(Q1)
         @test issymmetric(Q2)
         F = eigen(Q1, Q2)
         Fvals, Fvecs = F.values, F.vectors
         idx = argmax(Fvals)
-        w = Fvecs[:,idx]
+        w = Fvecs[:, idx]
 
         τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W_v, H_v, 1, 2)
         c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W_v, H_v, 1, 2)
         u = [u[1], u[2]]
-        b = sqrt(τ^2/4-δ)
-        λ_max = τ/2+b
-        λ_min = δ/λ_max
+        b = sqrt(τ^2 / 4 - δ)
+        λ_max = τ / 2 + b
+        λ_min = δ / λ_max
 
-        @test abs(λ_max - maximum(F.values))<=1e-10
-        @test abs(λ_min - minimum(F.values))<=1e-10
+        @test abs(λ_max - maximum(F.values)) <= 1.0e-10
+        @test abs(λ_min - minimum(F.values)) <= 1.0e-10
 
-        @test abs(u[1]*w[2] - w[1]*u[2])<1e-10
+        @test abs(u[1] * w[2] - w[1] * u[2]) < 1.0e-10
 
-        @test norm(u[1].*W_v[1].+u[2].*W_v[2]) ≈ 1
-        @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
-        @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
+        @test norm(u[1] .* W_v[1] .+ u[2] .* W_v[2]) ≈ 1
+        @test norm(Q1 * u - maximum(F.values) * Q2 * u) <= 1.0e-10
+        @test norm(Q1 * u - λ_max * Q2 * u) <= 1.0e-10
 
         W12, H12, loss = NMFMerge.mergepair(W_v, H_v, 1, 2)
         Err(Hm) = sum(abs2, W12 * Hm' - W * H)
-        @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-10
+        @test norm(ForwardDiff.gradient(Err, H12)) <= 1.0e-10
     end
 end
 
@@ -181,49 +187,49 @@ end
 @testset "Single-component image" begin
     ns = 31
     nt = 100
-    nthalf = nt>>1
+    nthalf = nt >> 1
     w = 7
-    W = exp.(-((1:ns) .- (ns+1)>>1).^2/(2*w^2))
+    W = exp.(-((1:ns) .- (ns + 1) >> 1) .^ 2 / (2 * w^2))
     H = rand(Float64, 1, nt)
-    img = W*H+eps()*randn(ns, nt)
+    img = W * H + eps() * randn(ns, nt)
 
     W0, H0 = NMF.nndsvd(img, 2)
     imgnf = NMF.solve!(NMF.CoordinateDescent{Float64}(), img, W0, H0)
     W1, H1 = imgnf.W, imgnf.H
     W1n, H1n = colnormalize(W1, H1)
-    [@test abs(norm(W1n[:,j], 2)-1) <= 1e-12 for j in axes(W1n, 2)]
+    [@test abs(norm(W1n[:, j], 2) - 1) <= 1.0e-12 for j in axes(W1n, 2)]
 
-    W2 = [W1n[:, j] for j in axes(W1n, 2)];
-    H2 = [H1n[i, :] for i in axes(H1n, 1)];
+    W2 = [W1n[:, j] for j in axes(W1n, 2)]
+    H2 = [H1n[i, :] for i in axes(H1n, 1)]
 
-    Q1, Q2, _, _, _, _ =build_Qs(W2, H2, 1, 2)
+    Q1, Q2, _, _, _, _ = build_Qs(W2, H2, 1, 2)
     @test issymmetric(Q1)
     @test issymmetric(Q2)
     F = eigen(Q1, Q2)
     Fvals, Fvecs = F.values, F.vectors
     idx = argmax(Fvals)
-    w = Fvecs[:,idx]
+    w = Fvecs[:, idx]
 
 
     τ, δ, c, h1h1, h1h2, h2h2 = NMFMerge.build_tr_det(W2, H2, 1, 2)
     c, p, u, h1h1, h2h2 = NMFMerge.solve_remix(W2, H2, 1, 2)
     u = [u[1], u[2]]
-    b = sqrt(τ^2/4-δ)
-    λ_max = τ/2+b
-    λ_min = δ/λ_max
+    b = sqrt(τ^2 / 4 - δ)
+    λ_max = τ / 2 + b
+    λ_min = δ / λ_max
 
-    @test abs(λ_max - maximum(F.values))<=1e-12
-    @test abs(λ_min - minimum(F.values))<=1e-10
+    @test abs(λ_max - maximum(F.values)) <= 1.0e-12
+    @test abs(λ_min - minimum(F.values)) <= 1.0e-10
 
-    @test abs(u[1]*w[2] - w[1]*u[2])<1e-12
+    @test abs(u[1] * w[2] - w[1] * u[2]) < 1.0e-12
 
-    @test norm(u[1].*W2[1].+u[2].*W2[2]) ≈ 1
-    @test norm(Q1*u - maximum(F.values)*Q2*u) <= 1e-10
-    @test norm(Q1*u - λ_max*Q2*u) <= 1e-10
+    @test norm(u[1] .* W2[1] .+ u[2] .* W2[2]) ≈ 1
+    @test norm(Q1 * u - maximum(F.values) * Q2 * u) <= 1.0e-10
+    @test norm(Q1 * u - λ_max * Q2 * u) <= 1.0e-10
 
     W12, H12, _ = NMFMerge.mergepair(W2, H2, 1, 2)
-    Err(Hm) = sum(abs2, W12*Hm'-W1*H1)
-    @test norm(ForwardDiff.gradient(Err, H12)) <= 1e-12
+    Err(Hm) = sum(abs2, W12 * Hm' - W1 * H1)
+    @test norm(ForwardDiff.gradient(Err, H12)) <= 1.0e-12
 
 end
 
@@ -250,24 +256,24 @@ end
     # roundoff then pushes it slightly negative, and solve_remix must clamp
     # rather than call sqrt on a negative number.
     S = [[1.0, 0.0], [0.0, 1.0]]
-    T = [[3.0, 4.0, 0.0, 0.0, 0.0], [0.0, 0.0, 5/3, 10/3, 10/3]]  # ‖T1‖² = ‖T2‖² = 25
+    T = [[3.0, 4.0, 0.0, 0.0, 0.0], [0.0, 0.0, 5 / 3, 10 / 3, 10 / 3]]  # ‖T1‖² = ‖T2‖² = 25
     τ, δ, _, _, _, _ = NMFMerge.build_tr_det(S, T, 1, 2)
-    @test τ^2/4 - δ < 0                       # the negative discriminant this guards against
+    @test τ^2 / 4 - δ < 0                       # the negative discriminant this guards against
     c, λ, u, h1h1, h2h2 = NMFMerge.solve_remix(S, T, 1, 2)
     @test isfinite(λ) && all(isfinite, u)
     @test λ ≈ 25                              # degenerate pencil: both eigenvalues equal
 
     # The same degeneracy reached through the public merge entry point.
     W = [1.0 0.0; 0.0 1.0; 0.0 0.0; 0.0 0.0; 0.0 0.0]
-    H = [3.0 4.0 0.0 0.0 0.0; 0.0 0.0 5/3 10/3 10/3]
-    Wm, Hm, seq = merge_pq(W, H; nstop=1)
+    H = [3.0 4.0 0.0 0.0 0.0; 0.0 0.0 5 / 3 10 / 3 10 / 3]
+    Wm, Hm, seq = merge_pq(W, H; nstop = 1)
     @test size(Wm, 2) == 1
 end
 
 @testset "Merge by min err" begin
     # Two cells, one is bright and the other dim. The bright cell is split into two tiles that alternate time points
-    S1 = [0.1, 0.5, 0.4, 0.0, 0.0, 0.0]; S1 = S1 / norm(S1);
-    S2 = [0.0, 0.0, 0.1, 0.9, 0.0, 0.0]; S2 = S2 / norm(S2);
+    S1 = [0.1, 0.5, 0.4, 0.0, 0.0, 0.0]; S1 = S1 / norm(S1)
+    S2 = [0.0, 0.0, 0.1, 0.9, 0.0, 0.0]; S2 = S2 / norm(S2)
     T1 = rand(20)
     T1a, T1b = copy(T1), copy(T1)
     T1a[1:2:end] .= 0
@@ -281,19 +287,19 @@ end
     W, H = [S1 S1 S2], [T1a'; T1b'; T2']
     W0, H0 = [S1 S2], [T1'; T2']
     Wn, Hn = colnormalize(W, H)
-    @test sum(abs2, W*H - Wn*Hn) < 1e-16
+    @test sum(abs2, W * H - Wn * Hn) < 1.0e-16
 
-    Wm, Hm, mergids = merge_pq(copy(Wn), copy(Hn); nstop=2)
-    Wn1 = [Wn[:, j] for j in axes(Wn, 2)];
-    Hn1 = [Hn[i, :] for i in axes(Hn, 1)];
-    Ids = [(1,2), (1,3), (2,3)]
+    Wm, Hm, mergids = merge_pq(copy(Wn), copy(Hn); nstop = 2)
+    Wn1 = [Wn[:, j] for j in axes(Wn, 2)]
+    Hn1 = [Hn[i, :] for i in axes(Hn, 1)]
+    Ids = [(1, 2), (1, 3), (2, 3)]
     loss1 = NMFMerge.mergepair(Wn1, Hn1, Ids[1][1], Ids[1][2])[end]
     loss2 = NMFMerge.mergepair(Wn1, Hn1, Ids[2][1], Ids[2][2])[end]
     loss3 = NMFMerge.mergepair(Wn1, Hn1, Ids[3][1], Ids[3][2])[end]
     i = findmin([loss1, loss2, loss3])[2]
 
     @test pop!(copy(mergids))[1:2] == Ids[i]
-    @test pop!(mergids)[1:2] == (1,2)
+    @test pop!(mergids)[1:2] == (1, 2)
 
 end
 
@@ -311,10 +317,10 @@ end
     wrand1 ./= norm(wrand1)
     Ws = [wrand zeros(5) wrand wrand1]
     Hs = [rand(10) rand(10) zeros(10) rand(10)]'
-    Wmerge, Hmerge, _ = merge_pq(Ws, Hs; nstop=1)
+    Wmerge, Hmerge, _ = merge_pq(Ws, Hs; nstop = 1)
     @test size(Wmerge, 2) == 1
 
-    W14, H14, _ = NMFMerge.mergepair([Ws[:,1], Ws[:,4]], [Hs[1,:], Hs[4,:]], 1, 2)
+    W14, H14, _ = NMFMerge.mergepair([Ws[:, 1], Ws[:, 4]], [Hs[1, :], Hs[4, :]], 1, 2)
     @test W14 ≈ Wmerge[:]
     @test H14 ≈ Hmerge[:]
 end
@@ -327,13 +333,13 @@ end
     Hsn1 = [Hsn[i, :] for i in axes(Hsn, 1)]
     mergepenalty_custom(E, t1sq, t2sq) = -E
     idpair_loss = []
-    for id1 in 1:2, id2 in id1+1:3
+    for id1 in 1:2, id2 in (id1 + 1):3
         W12, H12, loss2 = NMFMerge.mergepair(Wsn1, Hsn1, id1, id2)
         push!(idpair_loss, ((id1, id2), loss2))
     end
-    idpair_loss = sort(idpair_loss, by=x->x[2])
-    merge_sequence = merge_pq(Wsn, Hsn; nstop=1)[end]
-    merge_sequence_custom = merge_pq(mergepenalty_custom, Wsn, Hsn; nstop=1)[end]
+    idpair_loss = sort(idpair_loss, by = x -> x[2])
+    merge_sequence = merge_pq(Wsn, Hsn; nstop = 1)[end]
+    merge_sequence_custom = merge_pq(mergepenalty_custom, Wsn, Hsn; nstop = 1)[end]
     @test merge_sequence[1][1:2] == idpair_loss[1][1]
     @test merge_sequence_custom[1][1:2] == idpair_loss[3][1]
 
@@ -344,7 +350,7 @@ end
     ncols = size(Wn, 2)
 
     # Merge all the way down to a single component, recording every merge error.
-    Wfull, Hfull, schedule = merge_pq(Wn, Hn; nstop=1)
+    Wfull, Hfull, schedule = merge_pq(Wn, Hn; nstop = 1)
     @test size(Wfull, 2) == 1
     @test length(schedule) == ncols - 1
     errs = [s[3] for s in schedule]
@@ -357,9 +363,9 @@ end
 
     # Knee: stopping the merge at rank k equals replaying the first ncols-k
     # merges of the full schedule.
-    for k in 1:ncols-1
-        Wk, Hk, _ = merge_pq(Wn, Hn; nstop=k)
-        Wkr, Hkr = merge_replay(Wn, Hn, schedule[1:ncols-k])
+    for k in 1:(ncols - 1)
+        Wk, Hk, _ = merge_pq(Wn, Hn; nstop = k)
+        Wkr, Hkr = merge_replay(Wn, Hn, schedule[1:(ncols - k)])
         @test size(Wkr, 2) == k
         @test Wkr ≈ Wk
         @test Hkr ≈ Hk
@@ -372,7 +378,7 @@ end
     W = rand(6, 4)
     H = rand(4, 9)
     W1, H1 = colnormalize(W, H, 1)   # unit 1-norm, not unit 2-norm
-    @test_throws "unit 2-norm" merge_pq(W1, H1; nstop=2)
+    @test_throws "unit 2-norm" merge_pq(W1, H1; nstop = 2)
 end
 
 @testset "merge_pq error eltype follows factors" begin
@@ -380,38 +386,38 @@ end
     for Tf in (Float64, Float32)
         Wn, Hn = @inferred colnormalize(Tf.(W), Tf.(H))
         @test eltype(Wn) === Tf
-        Wm, Hm, seq = @inferred merge_pq(Wn, Hn; nstop=1)
+        Wm, Hm, seq = @inferred merge_pq(Wn, Hn; nstop = 1)
         @test eltype(Wm) === Tf
-        @test eltype(seq) === Tuple{Int,Int,Tf}
+        @test eltype(seq) === Tuple{Int, Int, Tf}
     end
 end
 
 @testset "errstop stopping criterion" begin
     Wn, Hn = colnormalize(float.(W_GT), float.(H_GT))
     ncols = size(Wn, 2)
-    _, _, schedule = merge_pq(Wn, Hn; nstop=1)
+    _, _, schedule = merge_pq(Wn, Hn; nstop = 1)
     errs = [s[3] for s in schedule]
     @test issorted(errs)  # the cut tests below rely on increasing merge errors
 
     # A threshold between two successive merge errors stops just before the
     # costlier merge, leaving more than the `nstop` floor of components.
     thresh = (errs[2] + errs[3]) / 2
-    W2, _, seq2 = merge_pq(Wn, Hn; nstop=1, errstop=thresh)
+    W2, _, seq2 = merge_pq(Wn, Hn; nstop = 1, errstop = thresh)
     @test length(seq2) == 2
     @test size(W2, 2) == ncols - 2
 
     # A threshold below the cheapest merge performs no merges.
-    W0, _, seq0 = merge_pq(Wn, Hn; nstop=1, errstop=errs[1] - 1)
+    W0, _, seq0 = merge_pq(Wn, Hn; nstop = 1, errstop = errs[1] - 1)
     @test isempty(seq0)
     @test size(W0, 2) == ncols
 
     # The `nstop` floor still caps merging even when errstop permits more.
-    Wf, _, seqf = merge_pq(Wn, Hn; nstop=ncols - 1, errstop=Inf)
+    Wf, _, seqf = merge_pq(Wn, Hn; nstop = ncols - 1, errstop = Inf)
     @test length(seqf) == 1
     @test size(Wf, 2) == ncols - 1
 
     # The default errstop reproduces the unrestricted merge.
-    Wd, _, seqd = merge_pq(Wn, Hn; nstop=1)
+    Wd, _, seqd = merge_pq(Wn, Hn; nstop = 1)
     @test length(seqd) == length(schedule)
     @test size(Wd, 2) == 1
 end
@@ -444,18 +450,18 @@ end
     end
 
     @testset "merge_pq" begin
-        rW, rH, rseq = @inferred merge_pq(Wn, Hn; nstop=2)
-        oW, oH, oseq = @inferred merge_pq(Wo, Ho; nstop=2)
+        rW, rH, rseq = @inferred merge_pq(Wn, Hn; nstop = 2)
+        oW, oH, oseq = @inferred merge_pq(Wo, Ho; nstop = 2)
         @test vals(oW) ≈ vals(rW) && vals(oH) ≈ vals(rH) && seqids(oseq) == seqids(rseq)
         @test axes(oW, 1) == axes(Wo, 1)        # feature axis preserved
         @test axes(oW, 2) == 1:2                # components re-enumerated, one-based
         @test axes(oH, 2) == axes(Ho, 2)        # sample axis preserved
-        vW, vH, vseq = @inferred merge_pq(view(Wn, :, :), view(Hn, :, :); nstop=2)
+        vW, vH, vseq = @inferred merge_pq(view(Wn, :, :), view(Hn, :, :); nstop = 2)
         @test vW ≈ rW && vH ≈ rH && seqids(vseq) == seqids(rseq)
     end
 
     @testset "merge_replay" begin
-        _, _, seq = merge_pq(Wn, Hn; nstop=1)
+        _, _, seq = merge_pq(Wn, Hn; nstop = 1)
         rW, rH = @inferred merge_replay(Wn, Hn, seq)
         oW, oH = @inferred merge_replay(Wo, Ho, seq)
         @test vals(oW) ≈ vals(rW) && vals(oH) ≈ vals(rH)
@@ -467,7 +473,7 @@ end
 
     @testset "mismatched component dimension" begin
         @test_throws DimensionMismatch colnormalize(rand(6, 4), rand(3, 9))
-        @test_throws DimensionMismatch merge_pq(rand(6, 4), rand(3, 9); nstop=2)
+        @test_throws DimensionMismatch merge_pq(rand(6, 4), rand(3, 9); nstop = 2)
         @test_throws DimensionMismatch merge_replay(rand(6, 4), rand(3, 9), [(1, 2)])
     end
 
@@ -475,43 +481,47 @@ end
         Wc = OffsetArray(collect(Wn), 0, -3)    # component axis shifted off one
         Hc = OffsetArray(collect(Hn), -3, 0)
         @test_throws "one-based" colnormalize(Wc, Hc)
-        @test_throws "one-based" merge_pq(Wc, Hc; nstop=2)
+        @test_throws "one-based" merge_pq(Wc, Hc; nstop = 2)
         @test_throws "one-based" merge_replay(Wc, Hc, [(1, 2)])
     end
 
     @testset "nmfmerge rejects offset input" begin
         # `nmfmerge` delegates to TSVD/NMF, which require one-based indexing.
         X = OffsetArray(rand(20, 15), -2, -3)
-        @test_throws "offset arrays are not supported" nmfmerge(X, 4; alg=:cd)
+        @test_throws "offset arrays are not supported" nmfmerge(X, 4; alg = :cd)
     end
 end
 
 @testset "multiple minima and merge escape" begin
     # A 4×8 rank-3 matrix whose exact factorization gives reconstruction error 0,
     # yet rank-3 NMF has a spurious local minimum that traps standard solvers.
-    X = float.([0 4 0 2 0 4 2 2;
-                2 2 2 1 4 4 1 1;
-                2 6 4 6 4 4 4 2;
-                2 1 3 2 4 1 1 0])
+    X = float.(
+        [
+            0 4 0 2 0 4 2 2;
+            2 2 2 1 4 4 1 1;
+            2 6 4 6 4 4 4 2;
+            2 1 3 2 4 1 1 0
+        ]
+    )
     @test rank(X) == 3
 
     # Standard NMF from NNDSVD converges to a strictly suboptimal point.
-    hals = nnmf(X, 3; init=:nndsvd, alg=:cd, initdata=svd(X), maxiter=10^6, tol=1e-12)
+    hals = nnmf(X, 3; init = :nndsvd, alg = :cd, initdata = svd(X), maxiter = 10^6, tol = 1.0e-12)
     @test norm(X - hals.W * hals.H) > 0.1
 
     # That point is a genuine strict local minimum (modulo column scaling), not
     # slow convergence: KKT holds with strictly positive dual variables, and the
     # reduced Hessian is positive definite off the k=3 scaling directions.
     cert = certify_localmin(X, hals.W, hals.H)
-    @test cert.kkt_free < 1e-5         # stationary on the positive entries
+    @test cert.kkt_free < 1.0e-5         # stationary on the positive entries
     @test cert.kkt_active > 0          # dual feasible on the active (zero) entries
     @test cert.n_zero_eig == 3         # nullspace is exactly the scaling invariance
-    @test cert.next_eig > 1e-3         # positive definite on its complement
+    @test cert.next_eig > 1.0e-3         # positive definite on its complement
 
     # Over-factoring to 4 components and merging back to 3 recovers the exact
     # factorization. A tight tol_final also tightens the overcomplete fit
     # (tol_intermediate defaults to sqrt(tol_final)), which must be converged
     # enough for the merge to separate the components.
-    mg = nmfmerge(X, 4 => 3; alg=:cd, maxiter=10^6, tol_final=1e-10)
-    @test norm(X - mg.W * mg.H) < 1e-6
+    mg = nmfmerge(X, 4 => 3; alg = :cd, maxiter = 10^6, tol_final = 1.0e-10)
+    @test norm(X - mg.W * mg.H) < 1.0e-6
 end

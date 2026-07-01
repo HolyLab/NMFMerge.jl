@@ -23,9 +23,9 @@ using GsvdInitialization: GsvdInitialization, gsvdrecover
 using TSVD: TSVD, tsvd
 
 export nmfmerge,
-       colnormalize,
-       merge_pq,
-       merge_replay
+    colnormalize,
+    merge_pq,
+    merge_replay
 
 @static if VERSION >= v"1.11"
     # `public` is a parse error before 1.11, so build the declaration as an
@@ -86,43 +86,43 @@ julia> size(result.W), size(result.H)
 julia> result = nmfmerge(X, 8 => 5);    # 8 overcomplete components, merge to 5
 ```
 """
-function nmfmerge(queuepenalty, X, ncomponents::Pair{Int,Int}; tol_final=1e-4, tol_intermediate=sqrt(tol_final), W0=nothing, H0=nothing, kwargs...)
+function nmfmerge(queuepenalty, X, ncomponents::Pair{Int, Int}; tol_final = 1.0e-4, tol_intermediate = sqrt(tol_final), W0 = nothing, H0 = nothing, kwargs...)
     n1, n2 = ncomponents
     f = tsvd(X, n2)
     Un, Sn, Vn = f
     if W0 === nothing || H0 === nothing
-        W0, H0 = NMF.nndsvd(X, n2, initdata=(U = Un, S = Sn, V = Vn))
+        W0, H0 = NMF.nndsvd(X, n2, initdata = (U = Un, S = Sn, V = Vn))
     end
-    result_initial = nnmf(X, n2; kwargs..., init=:custom, tol=tol_intermediate, W0=copy(W0), H0=copy(H0))
+    result_initial = nnmf(X, n2; kwargs..., init = :custom, tol = tol_intermediate, W0 = copy(W0), H0 = copy(H0))
     W_initial, H_initial = result_initial.W, result_initial.H
     kadd = n1 - n2
     kadd >= 0 || throw(ArgumentError("Cannot merge to more components than original"))
     if kadd == 0
         # No overcomplete components to add and nothing to merge; refine the
         # initial factorization to the final tolerance.
-        return nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=W_initial, H0=H_initial)
+        return nnmf(X, n2; kwargs..., init = :custom, tol = tol_final, W0 = W_initial, H0 = H_initial)
     end
     W_over_init, H_over_init, _ = gsvdrecover(X, W_initial, H_initial, kadd, f)
-    result_over = nnmf(X, n1; kwargs..., init=:custom, tol=tol_intermediate, W0=W_over_init, H0=H_over_init)
+    result_over = nnmf(X, n1; kwargs..., init = :custom, tol = tol_intermediate, W0 = W_over_init, H0 = H_over_init)
     W_over, H_over = result_over.W, result_over.H
     W_over_normed, H_over_normed = colnormalize(W_over, H_over)
-    Wmerge, Hmerge, _ = merge_pq(queuepenalty, W_over_normed, H_over_normed; nstop=n2)
-    result_renmf = nnmf(X, n2; kwargs..., init=:custom, tol=tol_final, W0=Wmerge, H0=Hmerge)
+    Wmerge, Hmerge, _ = merge_pq(queuepenalty, W_over_normed, H_over_normed; nstop = n2)
+    result_renmf = nnmf(X, n2; kwargs..., init = :custom, tol = tol_final, W0 = Wmerge, H0 = Hmerge)
     return result_renmf
 end
-nmfmerge(queuepenalty, X, ncomponents::Pair{<:Integer,<:Integer}; kwargs...) = nmfmerge(queuepenalty, X, Int(ncomponents.first) => Int(ncomponents.second); kwargs...)
-nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents+max(1, round(Int, 0.2*ncomponents)) => Int(ncomponents); kwargs...)
-nmfmerge(X, ncomponents::Pair{<:Integer,<:Integer}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
+nmfmerge(queuepenalty, X, ncomponents::Pair{<:Integer, <:Integer}; kwargs...) = nmfmerge(queuepenalty, X, Int(ncomponents.first) => Int(ncomponents.second); kwargs...)
+nmfmerge(queuepenalty, X, ncomponents::Integer; kwargs...) = nmfmerge(queuepenalty, X, ncomponents + max(1, round(Int, 0.2 * ncomponents)) => Int(ncomponents); kwargs...)
+nmfmerge(X, ncomponents::Pair{<:Integer, <:Integer}; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
 nmfmerge(X, ncomponents::Integer; kwargs...) = nmfmerge(ssdpenalty, X, ncomponents; kwargs...)
 
-function colnormalize!(W, H, p::Real=2)
+function colnormalize!(W, H, p::Real = 2)
     check_component_axis(W, H)
     nonzerocolids = Int[]
     for (j, w) in pairs(eachcol(W))
         normw = norm(w, p)
         if !iszero(normw)
-            W[:, j] = w/normw
-            H[j, :] = H[j, :]*normw
+            W[:, j] = w / normw
+            H[j, :] = H[j, :] * normw
             push!(nonzerocolids, j)
         end
     end
@@ -167,7 +167,7 @@ julia> Hn
  5.0  10.0
 ```
 """
-colnormalize(W, H, p::Real=2) = colnormalize!(float(copy(W)), float(copy(H)), p)
+colnormalize(W, H, p::Real = 2) = colnormalize!(float(copy(W)), float(copy(H)), p)
 
 """
     Wmerge, Hmerge, mergeseq = merge_pq([queuepenalty], W::AbstractArray, H::AbstractArray; nstop=1, errstop=typemax(...))
@@ -233,8 +233,10 @@ julia> mergeseq
  (2, 3, 0.0)
 ```
 """
-function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
-                  nstop::Integer=1, errstop=typemax(float(promote_type(eltype(W), eltype(H)))))
+function merge_pq(
+        queuepenalty, W::AbstractArray, H::AbstractArray;
+        nstop::Integer = 1, errstop = typemax(float(promote_type(eltype(W), eltype(H))))
+    )
     check_component_axis(W, H)
     # Merge errors are floating-point combinations of the W and H entries.
     T = float(promote_type(eltype(W), eltype(H)))
@@ -250,16 +252,16 @@ function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
     Hrows = [H[i, :] for i in 1:size(H, 1)]
     for (id, w) in enumerate(Wcols)
         wnorm = norm(w)
-        (abs(wnorm-1)<normtol || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
+        (abs(wnorm - 1) < normtol || iszero(wnorm)) || throw(ArgumentError("W columns must have unit 2-norm; $(id)-th column 2-norm = $(wnorm). Use `colnormalize` with the default `p=2`."))
     end
     Nt = length(Wcols)
     Nt >= 2 || throw(ArgumentError("Cannot do 2 to 1 merge: Matrix size smaller than 2"))
     Nt >= nstop || throw(ArgumentError("Final solution more than original size"))
     # Merging marks components dead rather than deleting them, keeping ids stable.
     alive = trues(Nt)
-    pq = PriorityQueue{Tuple{Int,Int},Float64}()
+    pq = PriorityQueue{Tuple{Int, Int}, Float64}()
     for id0 in Nt:-1:2
-        pq = pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id0, 1:id0-1)
+        pq = pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id0, 1:(id0 - 1))
     end
     m = Nt
     while m > nstop && !isempty(pq)
@@ -272,10 +274,10 @@ function merge_pq(queuepenalty, W::AbstractArray, H::AbstractArray;
         popfirst!(pq)
         id01, loss = mergecol2to1!(Wcols, Hrows, alive, id0, id1)
         push!(mrgseq, (id0, id1, loss))
-        pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id01, 1:id01-1)
+        pqupdate2to1!(queuepenalty, pq, Wcols, Hrows, alive, id01, 1:(id01 - 1))
         m -= 1
     end
-    return stack(Wcols[alive]), stack(Hrows[alive]; dims=1), mrgseq
+    return stack(Wcols[alive]), stack(Hrows[alive]; dims = 1), mrgseq
 end
 merge_pq(W::AbstractArray, H::AbstractArray; kwargs...) = merge_pq(ssdpenalty, W, H; kwargs...)
 
@@ -288,7 +290,7 @@ function check_component_axis(W, H)
     return nothing
 end
 
-function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, alive::AbstractVector{Bool}, id01::Integer, overlapids::AbstractRange{To}) where To
+function pqupdate2to1!(queuepenalty::Function, pq, S::AbstractVector, T::AbstractVector, alive::AbstractVector{Bool}, id01::Integer, overlapids::AbstractRange{To}) where {To}
     alive[id01] || return pq
     for id in overlapids
         if alive[id]
@@ -315,26 +317,26 @@ function solve_remix(S::AbstractVector, T::AbstractVector, id1::Integer, id2::In
     # τ/2 ± b are the eigenvalues of a symmetric pencil, so the discriminant
     # τ^2/4 - δ is nonnegative in exact arithmetic; clamp roundoff that pushes it
     # slightly below zero (otherwise `sqrt` throws on near-degenerate pairs).
-    b = sqrt(max(zero(δ), τ^2/4-δ))
-    λ_max = τ/2+b
-    λ_min = δ/λ_max
-    den = (h1h2+c*h2h2)*2
+    b = sqrt(max(zero(δ), τ^2 / 4 - δ))
+    λ_max = τ / 2 + b
+    λ_min = δ / λ_max
+    den = (h1h2 + c * h2h2) * 2
     if iszero(den)
         u = h1h1 >= h2h2 ? (one(c), zero(c)) : (zero(c), one(c))
     else
-        ξ = (h1h1-h2h2+2b)/den
-        u = (ξ, 1)./sqrt(1+2ξ*c+ξ^2)
+        ξ = (h1h1 - h2h2 + 2b) / den
+        u = (ξ, 1) ./ sqrt(1 + 2ξ * c + ξ^2)
     end
     return c, λ_min, u, h1h1, h2h2
 end
 
 function build_tr_det(W::AbstractVector, H::AbstractVector, id1::Integer, id2::Integer)
-    c = W[id1]'*W[id2]
-    h1h1 = H[id1]'*H[id1]
-    h1h2 = H[id1]'*H[id2]
-    h2h2 = H[id2]'*H[id2]
-    τ = h1h1+2c*h1h2+h2h2
-    δ = (1-c^2)*(h1h1*h2h2-h1h2^2)
+    c = W[id1]' * W[id2]
+    h1h1 = H[id1]' * H[id1]
+    h1h2 = H[id1]' * H[id2]
+    h2h2 = H[id2]' * H[id2]
+    τ = h1h1 + 2c * h1h2 + h2h2
+    δ = (1 - c^2) * (h1h1 * h2h2 - h1h2^2)
     return τ, δ, c, h1h1, h1h2, h2h2
 end
 
@@ -355,7 +357,7 @@ end
 
 function remix_enact(S::AbstractVector, T::AbstractVector, id1::Integer, id2::Integer, c, w)
     S12 = w[1] .* S[id1] .+ w[2] .* S[id2]
-    T12 = (w[1]+w[2]*c) .* T[id1] .+ (w[1]*c+w[2]) .* T[id2]
+    T12 = (w[1] + w[2] * c) .* T[id1] .+ (w[1] * c + w[2]) .* T[id2]
     return S12, T12
 end
 
@@ -395,7 +397,7 @@ function merge_replay(W::AbstractArray, H::AbstractArray, mergeseq::AbstractArra
         id0, id1 = mergeids
         mergecol2to1!(Wcols, Hrows, alive, id0, id1)
     end
-    return stack(Wcols[alive]), stack(Hrows[alive]; dims=1)
+    return stack(Wcols[alive]), stack(Hrows[alive]; dims = 1)
 end
 
 """
